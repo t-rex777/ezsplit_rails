@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :groups
   resource :session
   resources :passwords, param: :token
   resources :user_registers, only: %i[ create new ]
