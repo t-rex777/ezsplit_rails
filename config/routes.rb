@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   resources :passwords, param: :token
   resources :user_registers, only: %i[ create new ]
   resources :groups do
-    resources :group_memberships, only: %i[create destroy]
+    resources :group_memberships
   end
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

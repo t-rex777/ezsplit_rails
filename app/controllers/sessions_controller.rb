@@ -1,6 +1,17 @@
 class SessionsController < ApplicationController
   allow_unauthenticated_access only: %i[ new create ]
-  rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_session_url, alert: "Try again later." }
+  rate_limit to: 10, within: 3.minutes, only: :create, with: -> {
+    respond_to do |format|
+      format.json do
+        render json: {
+          status: :error,
+          errors: [ "Rate limit exceeded" ],
+          message: "Too many login attempts. Try again later."
+        }, status: :too_many_requests
+      end
+      format.html { redirect_to new_session_url, alert: "Try again later." }
+    end
+  }
 
   def new
   end
@@ -12,18 +23,49 @@ class SessionsController < ApplicationController
     user = User.find_by(email_address: permitted_params[:email_address])
     Rails.logger.info "User found: #{user&.email_address || 'No user found'}"
 
-    if user = User.authenticate_by(permitted_params)
-      Rails.logger.info "Authentication successful: #{user.email_address}"
-      start_new_session_for user
-      redirect_to after_authentication_url, notice: "Signed in successfully"
-    else
-      Rails.logger.info "Authentication failed"
-      redirect_to new_session_path, alert: "Try another email address or password."
+    respond_to do |format|
+      if user = User.authenticate_by(permitted_params)
+        Rails.logger.info "Authentication successful: #{user.email_address}"
+        session = start_new_session_for(user)
+
+        format.json do
+          render json: {
+            status: :success,
+            data: {
+              user: user.as_json(except: [ :password_digest, :password_reset_token ]),
+              session: {
+                id: session.id,
+                created_at: session.created_at
+              }
+            },
+            message: "Signed in successfully"
+          }
+        end
+        format.html { redirect_to after_authentication_url, notice: "Signed in successfully" }
+      else
+        Rails.logger.info "Authentication failed"
+        format.json do
+          render json: {
+            status: :error,
+            errors: [ "Invalid credentials" ],
+            message: "Invalid email address or password"
+          }, status: :unauthorized
+        end
+        format.html { redirect_to new_session_path, alert: "Try another email address or password." }
+      end
     end
   end
 
   def destroy
-    terminate_session
-    redirect_to new_session_path
+    respond_to do |format|
+      terminate_session
+      format.json do
+        render json: {
+          status: :success,
+          message: "Signed out successfully"
+        }
+      end
+      format.html { redirect_to new_session_path }
+    end
   end
 end

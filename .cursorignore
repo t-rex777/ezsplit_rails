@@ -1,0 +1,67 @@
+# Dependencies and packages
+/node_modules/
+/vendor/
+/.bundle/
+
+# Logs and databases
+/log/
+/tmp/
+*.log
+*.sqlite3
+/db/*.sqlite3
+/db/*.sqlite3-*
+
+# Temporary files
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Environment and credentials
+.env*
+/config/master.key
+/config/credentials.yml.enc
+/config/database.yml
+
+# Build outputs and assets
+/public/assets/
+/public/packs/
+/public/system/
+/storage/
+/coverage/
+
+# Test files
+/test/fixtures/
+/test/reports/
+/spec/reports/
+/spec/examples.txt
+
+# Cache and local settings
+/.sass-cache/
+/.cache/
+.byebug_history
+/public/packs-test/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.project
+.settings/
+
+# Documentation
+/doc/
+/docs/
+/.yardoc/
+/rdoc/
+
+# System files
+Thumbs.db
+.DS_Store
+*.bak
+*.tmp
+*.temp
+
+# Important files
+store/app/controllers/application_controller.rb
