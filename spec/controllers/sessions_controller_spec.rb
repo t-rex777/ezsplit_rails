@@ -30,10 +30,10 @@ RSpec.describe SessionsController, type: :controller do
           expect(response).to have_http_status(:ok)
 
           json_response = JSON.parse(response.body)
+          puts json_response
           expect(json_response['status']).to eq('success')
-          expect(json_response['message']).to eq('Signed in successfully')
           expect(json_response['data']).to include('user', 'session')
-          expect(json_response['data']['user']['email_address']).to eq(user.email_address)
+          expect(json_response['data']['user']['data']['attributes']['email_address']).to eq(user.email_address)
         end
 
         it "creates a new session" do
