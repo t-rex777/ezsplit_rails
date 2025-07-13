@@ -1,5 +1,5 @@
 class GroupsController < ApplicationController
-  before_action :set_group, only: %i[ show edit update destroy ]
+  before_action :set_group, only: %i[ show edit update destroy add_members]
 
   # GET /groups or /groups.json
   def index
@@ -38,6 +38,11 @@ class GroupsController < ApplicationController
   def update
     respond_to do |format|
       if @group.update(group_params)
+        # Handle member updates
+        if params[:group][:user_ids].present?
+          update_members(params[:group][:user_ids])
+        end
+
         format.html { redirect_to @group, notice: "Group was successfully updated." }
         format.json { render :show, status: :ok, location: @group }
       else
@@ -57,14 +62,38 @@ class GroupsController < ApplicationController
     end
   end
 
+  # POST /groups/1/add_members
+  def add_members
+    user_ids = params[:group][:user_ids] || []
+    update_members(user_ids)
+
+    respond_to do |format|
+      format.json { render :show, status: :ok, location: @group }
+    end
+  end
+
   private
     # Use callbacks to share common setup or constraints between actions.
     def set_group
-      @group = Group.find(params.expect(:id))
+      @group = Group.find(params.fetch(:id))
     end
 
     # Only allow a list of trusted parameters through.
     def group_params
-      params.expect(group: [ :name, :description, :created_by_id ])
+      params.require(:group).permit(:name, :description, :created_by_id, user_ids: [])
+    end
+
+    # Update group memberships
+    def update_members(user_ids)
+      ActiveRecord::Base.transaction do
+        # Remove existing memberships not in the new list
+        @group.group_memberships.where.not(user_id: user_ids).destroy_all
+
+        # Add new memberships
+        user_ids.each do |user_id|
+          next if @group.group_memberships.exists?(user_id: user_id)
+          @group.group_memberships.create!(user_id: user_id)
+        end
+      end
     end
 end

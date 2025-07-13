@@ -7,7 +7,7 @@ class GroupMembershipsController < ApplicationController
     @group_membership = GroupMembership.new(group_membership_params)
 
     if @group_membership.save
-      redirect_to @group_membership.group, notice: "You have joined the group"
+      re
     else
       render :new, status: :unprocessable_entity
     end

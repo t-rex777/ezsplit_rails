@@ -15,7 +15,7 @@ class SessionsController < ApplicationController
     if user = User.authenticate_by(permitted_params)
       Rails.logger.info "Authentication successful: #{user.email_address}"
       start_new_session_for user
-      redirect_to after_authentication_url
+      redirect_to after_authentication_url, notice: "Signed in successfully"
     else
       Rails.logger.info "Authentication failed"
       redirect_to new_session_path, alert: "Try another email address or password."
