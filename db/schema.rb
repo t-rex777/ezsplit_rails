@@ -18,8 +18,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_06_130635) do
     t.date "left_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["group_id"], name: "index_group_memberships_on_group_id"
-    t.index ["user_id"], name: "index_group_memberships_on_user_id"
+    t.index [ "group_id" ], name: "index_group_memberships_on_group_id"
+    t.index [ "user_id" ], name: "index_group_memberships_on_user_id"
   end
 
   create_table "groups", force: :cascade do |t|
@@ -28,7 +28,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_06_130635) do
     t.integer "created_by_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["created_by_id"], name: "index_groups_on_created_by_id"
+    t.index [ "created_by_id" ], name: "index_groups_on_created_by_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -37,7 +37,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_06_130635) do
     t.string "user_agent"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_sessions_on_user_id"
+    t.index [ "user_id" ], name: "index_sessions_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -50,7 +50,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_06_130635) do
     t.string "phone"
     t.string "avatar_url"
     t.date "date_of_birth"
-    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index [ "email_address" ], name: "index_users_on_email_address", unique: true
   end
 
   add_foreign_key "group_memberships", "groups"

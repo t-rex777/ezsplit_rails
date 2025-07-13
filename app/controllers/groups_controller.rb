@@ -3,34 +3,18 @@ class GroupsController < ApplicationController
 
   # GET /groups
   def index
-    @groups = Group.all
-
-    respond_to do |format|
-      format.json do
-        render json: {
-          status: :success,
-          data: {
-            items: @groups,
-            total_count: @groups.count
-          },
-          message: "Groups retrieved successfully"
-        }
-      end
-      format.html
-    end
+    pagy_obj, @groups = pagy(Group.all)
+    options = {
+      include: [ :users ]
+    }
+    render json: GroupSerializer.new(@groups, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
 
   # GET /groups/1
   def show
     respond_to do |format|
       format.json do
-        render json: {
-          status: :success,
-          data: {
-            group: @group.as_json(include: { users: { only: [ :id, :email_address, :first_name, :last_name ] } })
-          },
-          message: "Group retrieved successfully"
-        }
+        render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
       end
       format.html
     end
@@ -52,19 +36,14 @@ class GroupsController < ApplicationController
     respond_to do |format|
       if @group.save
         format.json do
-          render json: {
-            status: :success,
-            data: { group: @group },
-            message: "Group was successfully created"
-          }, status: :created
+          render json: GroupSerializer.new(@group).serializable_hash.to_json,
+                 status: :created
         end
         format.html { redirect_to @group, notice: "Group was successfully created." }
       else
         format.json do
           render json: {
-            status: :error,
-            errors: @group.errors.full_messages,
-            message: "Failed to create group"
+            errors: @group.errors.full_messages
           }, status: :unprocessable_entity
         end
         format.html { render :new, status: :unprocessable_entity }
@@ -82,21 +61,13 @@ class GroupsController < ApplicationController
         end
 
         format.json do
-          render json: {
-            status: :success,
-            data: {
-              group: @group.as_json(include: { users: { only: [ :id, :email_address, :first_name, :last_name ] } })
-            },
-            message: "Group was successfully updated"
-          }
+          render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
         end
         format.html { redirect_to @group, notice: "Group was successfully updated." }
       else
         format.json do
           render json: {
-            status: :error,
-            errors: @group.errors.full_messages,
-            message: "Failed to update group"
+            errors: @group.errors.full_messages
           }, status: :unprocessable_entity
         end
         format.html { render :edit, status: :unprocessable_entity }
@@ -110,10 +81,7 @@ class GroupsController < ApplicationController
 
     respond_to do |format|
       format.json do
-        render json: {
-          status: :success,
-          message: "Group was successfully deleted"
-        }, status: :ok
+        render json: { message: "Group was successfully deleted" }, status: :ok
       end
       format.html { redirect_to groups_path, status: :see_other, notice: "Group was successfully destroyed." }
     end
@@ -128,22 +96,14 @@ class GroupsController < ApplicationController
 
       respond_to do |format|
         format.json do
-          render json: {
-            status: :success,
-            data: {
-              group: @group.as_json(include: { users: { only: [ :id, :email_address, :first_name, :last_name ] } })
-            },
-            message: "Members were successfully updated"
-          }
+          render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
         end
       end
     rescue => e
       respond_to do |format|
         format.json do
           render json: {
-            status: :error,
-            errors: [ e.message ],
-            message: "Failed to update members"
+            errors: [ e.message ]
           }, status: :unprocessable_entity
         end
       end
@@ -157,9 +117,7 @@ class GroupsController < ApplicationController
       respond_to do |format|
         format.json do
           render json: {
-            status: :error,
-            errors: [ "Group not found" ],
-            message: "Group with ID #{params[:id]} does not exist"
+            errors: [ "Group not found" ]
           }, status: :not_found
         end
         format.html { redirect_to groups_path, alert: "Group not found" }
@@ -172,12 +130,13 @@ class GroupsController < ApplicationController
 
     def update_members(user_ids)
       ActiveRecord::Base.transaction do
-        # Remove existing memberships not in the new list
-        @group.group_memberships.where.not(user_id: user_ids).destroy_all
+         # Remove memberships which are not included
+         @group.group_memberships.where.not(user_id: user_ids).destroy_all
 
         # Add new memberships
         user_ids.each do |user_id|
           next if @group.group_memberships.exists?(user_id: user_id)
+          puts "Adding new membership for user #{user_id}"
           @group.group_memberships.create!(user_id: user_id)
         end
       end

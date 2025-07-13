@@ -6,40 +6,15 @@ class GroupMembershipsController < ApplicationController
   end
 
   def show
-    render json: {
-      status: :success,
-      data: {
-        group_membership: @group_membership,
-        group: @group_membership.group.as_json(
-          include: {
-            users: {
-              only: [ :id, :email_address, :first_name, :last_name ]
-            }
-          }
-        )
-      },
-      message: "Successfully fetched the group"
-    }, status: :ok
+    render json: GroupMembershipSerializer.new(@group_membership).serializable_hash.to_json
   end
 
   def index
-    group_memberships = GroupMembership.all
-
-    render json: {
-      status: :success,
-      data: {
-        group_memberships: group_memberships.map do |membership|
-          membership.group.as_json(
-            include: {
-              users: {
-                only: [ :id, :email_address, :first_name, :last_name ]
-              }
-            }
-          )
-        end
-      },
-      message: "Successfully fetched all the groups"
-    }, status: :ok
+    pagy_obj, group_memberships = pagy(GroupMembership.all)
+    options = {
+      include: [ :user, :group ]
+    }
+    render json: GroupMembershipSerializer.new(group_memberships, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
 
   def create

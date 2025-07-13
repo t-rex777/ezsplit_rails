@@ -13,6 +13,14 @@ class SessionsController < ApplicationController
     end
   }
 
+  def show
+    session = find_session_by_cookie
+    options = {
+      include: [ :groups ]
+    }
+    render json: UserSerializer.new(session.user, options).serializable_hash.to_json
+  end
+
   def new
   end
 
@@ -32,7 +40,7 @@ class SessionsController < ApplicationController
           render json: {
             status: :success,
             data: {
-              user: user.as_json(except: [ :password_digest, :password_reset_token ]),
+              user: UserSerializer.new(user).serializable_hash,
               session: {
                 id: session.id,
                 created_at: session.created_at
@@ -67,5 +75,11 @@ class SessionsController < ApplicationController
       end
       format.html { redirect_to new_session_path }
     end
+  end
+
+  private
+
+  def find_session_by_cookie
+     Session.find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
   end
 end
