@@ -4,4 +4,10 @@ FactoryBot.define do
     description { "Fun group" }
     association :created_by, factory: :user
   end
-end 
+
+  factory :group_membership do
+    association :user
+    association :group
+    joined_at { Date.current }
+  end
+end

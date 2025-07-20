@@ -56,7 +56,6 @@ RSpec.describe GroupsController, type: :controller do
         expect(group.users).not_to include(user1)
 
         expect(GroupMembership.find_by(user_id: user1.id, group_id: group.id)).to be_nil
-        
       end
     end
   end

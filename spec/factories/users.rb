@@ -8,4 +8,4 @@ FactoryBot.define do
     phone { "1234567890" }
     date_of_birth { "2000-01-01" }
   end
-end 
+end
