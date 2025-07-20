@@ -71,3 +71,4 @@ end
 # serialization
 gem "jsonapi-serializer"
 gem "pagy"
+gem "oj"

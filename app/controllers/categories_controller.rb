@@ -31,7 +31,6 @@ class CategoriesController < ApplicationController
           render json: CategorySerializer.new(@category).serializable_hash.to_json,
                  status: :created
         end
-        format.html { redirect_to @category, notice: "Category was successfully created." }
       else
         format.json do
           render json: {
@@ -46,7 +45,6 @@ class CategoriesController < ApplicationController
   def update
     respond_to do |format|
       if @category.update(category_params)
-        format.html { redirect_to @category, notice: "Category was successfully updated." }
         format.json do
           render json: CategorySerializer.new(@category).serializable_hash.to_json,
                  status: :ok
@@ -82,6 +80,6 @@ class CategoriesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def category_params
-      params.expect(category: [ :name, :icon, :color ])
+      params.expect(category: [ :name, :icon, :color, :created_by_id ])
     end
 end

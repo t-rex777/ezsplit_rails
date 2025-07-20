@@ -107,3 +107,7 @@ m.load_bundler!
 if m.invoked_as_script?
   load Gem.bin_path("bundler", "bundle")
 end
+
+group :development do
+  gem "ruby-lsp-rspec", require: false
+end
