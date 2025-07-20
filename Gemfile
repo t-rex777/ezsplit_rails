@@ -60,6 +60,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  gem "shoulda-matchers"
 end
 gem "rspec-rails", group: [ :development, :test ]
 
@@ -70,3 +71,4 @@ end
 # serialization
 gem "jsonapi-serializer"
 gem "pagy"
+gem "oj"
