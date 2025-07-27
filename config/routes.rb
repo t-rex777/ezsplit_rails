@@ -3,6 +3,7 @@ Rails.application.routes.draw do
   resource :session
   resources :passwords, param: :token
   resources :user_registers, only: %i[ create new ]
+  resources :expenses
   resources :groups do
     resources :group_memberships
   end

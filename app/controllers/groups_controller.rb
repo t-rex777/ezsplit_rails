@@ -136,7 +136,6 @@ class GroupsController < ApplicationController
         # Add new memberships
         user_ids.each do |user_id|
           next if @group.group_memberships.exists?(user_id: user_id)
-          puts "Adding new membership for user #{user_id}"
           @group.group_memberships.create!(user_id: user_id)
         end
       end

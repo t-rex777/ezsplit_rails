@@ -365,6 +365,7 @@ GEM
     thruster (0.1.14-arm64-darwin)
     thruster (0.1.14-x86_64-darwin)
     thruster (0.1.14-x86_64-linux)
+    timecop (0.9.10)
     timeout (0.4.3)
     turbo-rails (2.0.16)
       actionpack (>= 7.1.0)
@@ -428,6 +429,7 @@ DEPENDENCIES
   sqlite3 (>= 2.1)
   stimulus-rails
   thruster
+  timecop (~> 0.9.10)
   turbo-rails
   tzinfo-data
   web-console

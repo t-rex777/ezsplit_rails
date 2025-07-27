@@ -72,3 +72,5 @@ end
 gem "jsonapi-serializer"
 gem "pagy"
 gem "oj"
+
+gem "timecop", "~> 0.9.10"
