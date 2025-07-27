@@ -42,10 +42,12 @@ class ExpensesController < ApplicationController
 
   def create_expenses_users(expense)
     params[:expense][:distribution].map do |user|
+      amount = params[:expense][:split_type] == "percentage" ? user[:amount].to_f * params[:expense][:amount].to_f / 100 : user[:amount].to_f
+
       expense_user = ExpensesUser.create!(
         user_id: user[:user_id],
         expense_id: expense.id,
-        amount: user[:amount]
+        amount: amount
       )
     end
   end
@@ -59,7 +61,6 @@ class ExpensesController < ApplicationController
     when "equal", "exact"
       if total_amount.to_f != params[:expense][:amount].to_f
         message = "Amount must be equal to the sum of the distribution"
-        puts total_amount, params[:expense][:amount], total_amount.to_f != params[:expense][:amount].to_f
         raise InvalidDistributionError, message
       end
     when "percentage"

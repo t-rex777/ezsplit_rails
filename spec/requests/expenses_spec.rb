@@ -39,7 +39,7 @@ RSpec.describe "Expenses", type: :request do
       ]
       } } }
 
-    it "creates an expense with valid params" do
+    it "creates an expense with valid params with equal split type" do
       post expenses_url, params: expense_params
 
       response_body = Oj.load(response.body)
@@ -78,7 +78,113 @@ RSpec.describe "Expenses", type: :request do
           }
         }
       }.with_indifferent_access)
+      expect(ExpensesUser.count).to eq(3)
     end
+
+    it "creates an expense with valid params with exact split type" do
+      exact_expense_params = expense_params.deep_dup
+      exact_expense_params[:expense][:split_type] = "exact"
+      exact_expense_params[:expense][:distribution] = [
+        { user_id: user.id, amount: 40 },
+        { user_id: second_user.id, amount: 20 },
+        { user_id: third_user.id, amount: 30 }
+      ]
+
+      post expenses_url, params: exact_expense_params
+
+      response_body = Oj.load(response.body)
+      expect(response).to be_successful
+      expect(response_body).to eq({
+        data: {
+          id: "1",
+          type: "expense",
+          attributes: {
+            name: "Test Expense",
+            amount: "90.0",
+            split_type: "exact",
+            currency: "INR",
+            expense_date: Date.current.strftime("%Y-%m-%d"),
+            settled: false
+          },
+          relationships: {
+            payer: {
+              data: {
+                id: user.id.to_s,
+                type: "user"
+              }
+            },
+              group: {
+                data: {
+                  id: group.id.to_s,
+                  type: "group"
+                }
+              },
+              category: {
+                data: {
+                  id: category.id.to_s,
+                  type: "category"
+                }
+            }
+          }
+        }
+      }.with_indifferent_access)
+      expect(ExpensesUser.count).to eq(3)
+    end
+
+     it "creates an expense with valid params with percentage split type" do
+      percentage_expense_params = expense_params.deep_dup
+      percentage_expense_params[:expense][:split_type] = "percentage"
+      percentage_expense_params[:expense][:amount] = 90
+      percentage_expense_params[:expense][:distribution] = [
+        { user_id: user.id, amount: 25 },
+        { user_id: second_user.id, amount: 35 },
+        { user_id: third_user.id, amount: 40 }
+      ]
+
+      post expenses_url, params: percentage_expense_params
+
+      response_body = Oj.load(response.body)
+      expect(response).to be_successful
+      expect(response_body).to eq({
+        data: {
+          id: "1",
+          type: "expense",
+          attributes: {
+            name: "Test Expense",
+            amount: "90.0",
+            split_type: "percentage",
+            currency: "INR",
+            expense_date: Date.current.strftime("%Y-%m-%d"),
+            settled: false
+          },
+          relationships: {
+            payer: {
+              data: {
+                id: user.id.to_s,
+                type: "user"
+              }
+            },
+              group: {
+                data: {
+                  id: group.id.to_s,
+                  type: "group"
+                }
+              },
+              category: {
+                data: {
+                  id: category.id.to_s,
+                  type: "category"
+                }
+            }
+          }
+        }
+      }.with_indifferent_access)
+      expect(ExpensesUser.count).to eq(3)
+      expect(ExpensesUser.first.amount.to_f).to eq(22.5)
+      expect(ExpensesUser.second.amount.to_f).to eq(31.5)
+      expect(ExpensesUser.third.amount.to_f).to eq(36)
+    end
+
 
     context "with invalid params" do
       it "does not when currency is invalid" do
@@ -127,8 +233,26 @@ RSpec.describe "Expenses", type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
       end
 
-      it "does not create an expense with invalid distribution" do
+      context "with invalid distribution" do
+        it "does not create an expense when split type is equal" do
+          invalid_expense_params = expense_params.deep_dup
+          invalid_expense_params[:expense][:split_type] = "equal"
+          invalid_expense_params[:expense][:distribution] = [
+            { user_id: user.id, amount: 35 },
+            { user_id: second_user.id, amount: 30 },
+            { user_id: third_user.id, amount: 30 }
+          ]
+
+          post expenses_url, params: invalid_expense_params
+
+          response_body = Oj.load(response.body)
+          expect(response_body["errors"]).to include("Amount must be equal to the sum of the distribution")
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+
+        it "does not create an expense when split type is exact" do
         invalid_expense_params = expense_params.deep_dup
+        invalid_expense_params[:expense][:split_type] = "exact"
         invalid_expense_params[:expense][:distribution] = [
           { user_id: user.id, amount: 35 },
           { user_id: second_user.id, amount: 30 },
@@ -138,9 +262,25 @@ RSpec.describe "Expenses", type: :request do
         post expenses_url, params: invalid_expense_params
 
         response_body = Oj.load(response.body)
-        puts response_body
         expect(response_body["errors"]).to include("Amount must be equal to the sum of the distribution")
         expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "does not create an expense when split type is percentage" do
+        invalid_expense_params = expense_params.deep_dup
+        invalid_expense_params[:expense][:split_type] = "percentage"
+        invalid_expense_params[:expense][:distribution] = [
+          { user_id: user.id, amount: 35 },
+          { user_id: second_user.id, amount: 30 },
+          { user_id: third_user.id, amount: 30 }
+        ]
+
+        post expenses_url, params: invalid_expense_params
+
+        response_body = Oj.load(response.body)
+        expect(response_body["errors"]).to include("Total percentage must equal 100")
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
       end
     end
   end
