@@ -117,4 +117,17 @@ RSpec.describe ExpensesController, type: :controller do
       end
     end
   end
+
+  describe "DELETE #destroy" do
+    let!(:expense) { create(:expense, payer: user, group: group, category: category) }
+
+    it("deletes the expense when id is provided") do
+      delete :destroy, params: { id: expense.id }, format: :json
+
+      response_body = Oj.load(response.body)
+      expect(response).to be_successful
+      expect(response_body).to eq({ "message" => "Expense was successfully deleted" })
+      expect(Expense.exists?(expense.id)).to be false
+    end
+  end
 end
