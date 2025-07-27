@@ -8,6 +8,8 @@ RSpec.describe ExpensesController, type: :controller do
   end
 
   let!(:user) { create(:user) }
+  let!(:second_user) { create(:user, first_name: "Second", last_name: "User", email_address: "second@example.com") }
+  let!(:third_user) { create(:user, first_name: "Third", last_name: "User", email_address: "third@example.com") }
   let!(:group) { create(:group, created_by: user) }
   let!(:category) { create(:category, created_by: user) }
 
@@ -25,9 +27,26 @@ RSpec.describe ExpensesController, type: :controller do
 
   describe "POST #create" do
     context "with valid parameters" do
-      let(:expense_params) { { expense: { name: "Test Expense", amount: 100, split_type: "equal", currency: "INR", expense_date: Date.current, settled: false, payer_id: user.id, group_id: group.id, category_id: category.id } } }
+      let(:expense_params) { {
+        expense: {
+          name: "Test Expense",
+          amount: 90,
+          split_type: "equal",
+          currency: "INR",
+          expense_date: Date.current,
+          settled: false,
+          payer_id: user.id,
+          group_id: group.id,
+          category_id: category.id,
+          distribution: [
+            { user_id: user.id, amount: 30 },
+            { user_id: second_user.id, amount: 30 },
+            { user_id: third_user.id, amount: 30 }
+          ]
+        }
+      } }
 
-      it "creates a new expense" do
+      it "creates a new expense with equal split" do
         post :create, params: expense_params
 
         response_body = Oj.load(response.body)
@@ -38,7 +57,7 @@ RSpec.describe ExpensesController, type: :controller do
             type: "expense",
             attributes: {
               name: "Test Expense",
-              amount: "100.0",
+              amount: "90.0",
               split_type: "equal",
               currency: "INR",
               expense_date: Date.current.strftime("%Y-%m-%d"),
@@ -66,17 +85,18 @@ RSpec.describe ExpensesController, type: :controller do
             }
           }
         }.with_indifferent_access)
+        expect(ExpensesUser.count).to be(3)
       end
     end
   end
 
    describe "PUT #update" do
     context "with valid parameters" do
-      let(:expense_params) { { expense: { name: "Test Expense", amount: 100, split_type: "equal", currency: "INR", expense_date: Date.current, settled: false, payer_id: user.id, group_id: group.id, category_id: category.id } } }
+      let(:expense_params) { { expense: { name: "Test Expense", amount: 90, split_type: "equal", currency: "INR", expense_date: Date.current, settled: false, payer_id: user.id, group_id: group.id, category_id: category.id } } }
       let(:expense) { create(:expense, payer: user, group: group, category: category) }
 
       it "updates an expense" do
-        put :update, params: { id: expense.id, expense: expense_params.merge(name: "Updated Expense", settled: false) }
+        put :update, params: { id: expense.id }.merge(expense_params)
 
         response_body = Oj.load(response.body)
         expect(response).to be_successful
@@ -85,8 +105,8 @@ RSpec.describe ExpensesController, type: :controller do
             id: expense.id.to_s,
             type: "expense",
             attributes: {
-              name: "Updated Expense",
-              amount: "100.0",
+              name: "Test Expense",
+              amount: "90.0",
               split_type: "equal",
               currency: "INR",
               expense_date: Date.current.strftime("%Y-%m-%d"),
