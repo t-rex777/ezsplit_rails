@@ -1,15 +1,13 @@
 require "rails_helper"
 
-RSpec.describe CategoriesController, type: :controller do
-  before do
-    # Create and set session for user1
-    session = user.sessions.create!(user_agent: "test", ip_address: "127.0.0.1")
-    cookies.signed[:session_id] = session.id
-  end
-
+RSpec.describe "Categories", type: :request do
   let!(:user) { create(:user) }
 
-  describe "GET #index" do
+  before do
+    post session_url, params: { email_address: user.email_address, password: user.password }
+  end
+
+  describe "GET /categories" do
     let!(:categories) do
       [
         create(:category, name: "Sample Category", created_by_id: user.id),
@@ -18,11 +16,10 @@ RSpec.describe CategoriesController, type: :controller do
     end
 
     it "returns paginated response" do
-      get :index
+      get categories_url
+
       response_body = Oj.load(response.body)
-
       expect(response).to be_successful
-
       expect(response_body["data"].length).to eq(2)
       expect(response_body["data"][0]["attributes"]).to include(
         "name" => "Sample Category"
@@ -33,11 +30,11 @@ RSpec.describe CategoriesController, type: :controller do
     end
   end
 
-  describe "GET #show" do
+  describe "GET /categories/:id" do
     let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
 
     it "returns the category" do
-      get :show, params: { id: category.id }
+      get category_url(category)
 
       response_body = Oj.load(response.body)
       expect(response).to be_successful
@@ -47,9 +44,9 @@ RSpec.describe CategoriesController, type: :controller do
     end
   end
 
-  describe "POST #create" do
+  describe "POST /categories" do
     it "creates a new category" do
-      post :create, params: { category: { name: "Sample Category", created_by_id: user.id } }, format: :json
+      post categories_url, params: { category: { name: "Sample Category", created_by_id: user.id } }, as: :json
 
       response_body = Oj.load(response.body)
       expect(response).to be_successful
@@ -57,13 +54,32 @@ RSpec.describe CategoriesController, type: :controller do
         "name" => "Sample Category"
       )
     end
+
+    context "with invalid params" do
+      it "does not create a new category when name is missing" do
+        post categories_url, params: { category: { name: nil } }, as: :json
+
+        response_body = Oj.load(response.body)
+        expect(response_body["errors"]).to include("Name can't be blank")
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "does not create a new category when created_by_id is missing" do
+        post categories_url, params: { category: { name: "Sample Category" } }, as: :json
+
+        response_body = Oj.load(response.body)
+        puts response_body
+        expect(response_body["errors"]).to include("Created by can't be blank")
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
   end
 
-  describe "PUT #update" do
+  describe "PUT /categories/:id" do
     let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
 
     it "updates the provided category" do
-      put :update, params: { id: category.id, category: { name: "Not Sample Category" } }, format: :json
+      put category_url(category), params: { category: { name: "Not Sample Category" } }, as: :json
 
       response_body = Oj.load(response.body)
       expect(response_body["data"]["attributes"]).to include(
@@ -72,12 +88,11 @@ RSpec.describe CategoriesController, type: :controller do
     end
   end
 
-
-  describe "DELETE #destroy" do
+  describe "DELETE /categories/:id" do
     let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
 
     it "deletes the provided category" do
-      delete :destroy, params: { id: category.id }, format: :json
+      delete category_url(category), as: :json
 
       response_body = Oj.load(response.body)
       expect(response_body["message"]).to eq("Category was successfully destroyed.")
