@@ -74,3 +74,9 @@ gem "pagy"
 gem "oj"
 
 gem "timecop", "~> 0.9.10"
+
+gem "dockerfile-rails", ">= 1.7", group: :development
+
+gem "litestream", "~> 0.14.0"
+
+gem "aws-sdk-s3", "~> 1.194", require: false

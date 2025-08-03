@@ -1,7 +1,7 @@
 class ExpensesController < ApplicationController
   class InvalidDistributionError < StandardError; end
 
-  before_action :set_expense, only: %i[update destroy]
+  before_action :set_expense, only: %i[update destroy show]
   before_action :validate_expense_split, only: %i[create update]
   rescue_from InvalidDistributionError, with: :render_error
 
@@ -11,6 +11,13 @@ class ExpensesController < ApplicationController
       include: [ :payer, :group, :category ]
     }
     render json: ExpenseSerializer.new(@expenses, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
+  end
+
+  def show
+    options = {
+      include: [ :payer, :group, :category, :expenses_users ]
+    }
+    render json: ExpenseSerializer.new(@expense, options).serializable_hash.to_json
   end
 
   def create

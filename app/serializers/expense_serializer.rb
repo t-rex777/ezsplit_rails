@@ -4,4 +4,5 @@ class ExpenseSerializer
   belongs_to :payer, serializer: UserSerializer
   belongs_to :group, serializer: GroupSerializer
   belongs_to :category, serializer: CategorySerializer
+  has_many :expenses_users, serializer: ExpensesUserSerializer
 end

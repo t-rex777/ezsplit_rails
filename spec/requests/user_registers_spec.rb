@@ -1,7 +1,7 @@
 require 'rails_helper'
 
-RSpec.describe UserRegistersController, type: :controller do
-  describe "POST #create" do
+RSpec.describe "UserRegisters", type: :request do
+  describe "POST /user_register" do
     it "creates a new user with valid params" do
       user_params = {
         user: {
@@ -14,7 +14,7 @@ RSpec.describe UserRegistersController, type: :controller do
           date_of_birth: "2000-05-01"
         }
       }
-      post :create, params: user_params
+      post user_registers_url, params: user_params
       expect(response).to have_http_status(:redirect)
     end
 
@@ -30,7 +30,7 @@ RSpec.describe UserRegistersController, type: :controller do
           date_of_birth: "2000-05-01"
         }
       }
-      post :create, params: user_params
+      post user_registers_url, params: user_params
       expect(response).to have_http_status(:unprocessable_entity)
     end
   end
