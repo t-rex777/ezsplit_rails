@@ -2,6 +2,7 @@ class Expense < ApplicationRecord
   belongs_to :payer, class_name: "User", foreign_key: :payer_id
   belongs_to :group, class_name: "Group", foreign_key: :group_id
   belongs_to :category, class_name: "Category", foreign_key: :category_id
+  has_many :expenses_users, dependent: :destroy
 
   SPLIT_TYPES = %w[equal percentage exact].freeze
   CURRENCIES = %w[INR USD].freeze

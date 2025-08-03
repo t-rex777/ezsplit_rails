@@ -7,7 +7,6 @@ class UserRegistersController < ApplicationController
 
   def create
     @user = User.new(user_params)
-
     respond_to do |format|
       if @user.save
         start_new_session_for(@user)

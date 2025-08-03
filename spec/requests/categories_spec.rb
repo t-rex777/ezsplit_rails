@@ -68,8 +68,15 @@ RSpec.describe "Categories", type: :request do
         post categories_url, params: { category: { name: "Sample Category" } }, as: :json
 
         response_body = Oj.load(response.body)
-        puts response_body
         expect(response_body["errors"]).to include("Created by can't be blank")
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "does not create a new category when created_by_id is not the current user" do
+        post categories_url, params: { category: { name: "Sample Category", created_by_id: user.id + 1 } }, as: :json
+
+        response_body = Oj.load(response.body)
+        expect(response_body["errors"]).to include("Created by must exist")
         expect(response).to have_http_status(:unprocessable_entity)
       end
     end
