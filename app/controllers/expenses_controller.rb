@@ -8,7 +8,7 @@ class ExpensesController < ApplicationController
   def index
     pagy_obj, @expenses = pagy(Expense.all)
     options = {
-      include: [ :payer, :group, :category ]
+      include: [ :payer, :group, :category, :expenses_users ]
     }
     render json: ExpenseSerializer.new(@expenses, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
@@ -31,11 +31,14 @@ class ExpensesController < ApplicationController
   end
 
   def update
-    if @expense.update(expense_params)
-      render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
-    else
-      render json: { errors: @expense.errors.full_messages }, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+      destroy_expense_users(@expense)
+     @expense.update!(expense_params.except(:distribution))
+      create_expenses_users(@expense)
     end
+      render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
+  rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
+      render json: { errors: [ exception.message ] }, status: :unprocessable_entity
   end
 
   def destroy
@@ -57,6 +60,10 @@ class ExpensesController < ApplicationController
         amount: amount
       )
     end
+  end
+
+  def destroy_expense_users(expense)
+    expense.expenses_users.destroy_all
   end
 
   def validate_expense_split
@@ -81,6 +88,7 @@ class ExpensesController < ApplicationController
     end
   end
 
+  # TODO: if amount is changed, distribution should also be changed
   def expense_params
     params.require(:expense).permit(:name, :amount, :split_type, :currency, :expense_date, :settled, :payer_id, :group_id, :category_id, distribution: [ :user_id, :amount ])
   end

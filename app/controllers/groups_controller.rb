@@ -12,12 +12,7 @@ class GroupsController < ApplicationController
 
   # GET /groups/1
   def show
-    respond_to do |format|
-      format.json do
-        render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
-      end
-      format.html
-    end
+     render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
   end
 
   # GET /groups/new
@@ -53,25 +48,19 @@ class GroupsController < ApplicationController
 
   # PATCH/PUT /groups/1
   def update
-    respond_to do |format|
       if @group.update(group_params)
         # Handle member updates
         if params[:group][:user_ids].present?
           update_members(params[:group][:user_ids])
         end
 
-        format.json do
           render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
-        end
-        format.html { redirect_to @group, notice: "Group was successfully updated." }
       else
         format.json do
           render json: {
             errors: @group.errors.full_messages
           }, status: :unprocessable_entity
         end
-        format.html { render :edit, status: :unprocessable_entity }
-      end
     end
   end
 
