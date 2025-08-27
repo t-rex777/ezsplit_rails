@@ -2,6 +2,7 @@ require "rails_helper"
 
 RSpec.describe "Categories", type: :request do
   let!(:user) { create(:user) }
+  let!(:user2) { create(:user) }
 
   before do
     post session_url, params: { email_address: user.email_address, password: user.password }
@@ -10,8 +11,9 @@ RSpec.describe "Categories", type: :request do
   describe "GET /categories" do
     let!(:categories) do
       [
-        create(:category, name: "Sample Category", created_by_id: user.id),
-        create(:category, name: "Sample Category 2", created_by_id: user.id)
+        create(:category, name: "Sample Category", user_id: user.id),
+        create(:category, name: "Sample Category 2", user_id: user.id),
+        create(:category, name: "Sample Category 3", user_id: user2.id)
       ]
     end
 
@@ -28,10 +30,24 @@ RSpec.describe "Categories", type: :request do
         "name" => "Sample Category 2"
       )
     end
+
+    it "does not return categories created by other users" do
+      get categories_url
+
+      response_body = Oj.load(response.body)
+      expect(response).to be_successful
+      expect(response_body["data"].length).to eq(2)
+      expect(response_body["data"][0]["attributes"]).to include(
+        "name" => "Sample Category"
+      )
+      expect(response_body["data"][1]["attributes"]).to include(
+        "name" => "Sample Category 2"
+      )
+    end
   end
 
   describe "GET /categories/:id" do
-    let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
+    let!(:category) { create(:category, name: "Sample Category", user_id: user.id) }
 
     it "returns the category" do
       get category_url(category)
@@ -46,7 +62,7 @@ RSpec.describe "Categories", type: :request do
 
   describe "POST /categories" do
     it "creates a new category" do
-      post categories_url, params: { category: { name: "Sample Category", created_by_id: user.id } }, as: :json
+      post categories_url, params: { category: { name: "Sample Category" } }, as: :json
 
       response_body = Oj.load(response.body)
       expect(response).to be_successful
@@ -63,27 +79,11 @@ RSpec.describe "Categories", type: :request do
         expect(response_body["errors"]).to include("Name can't be blank")
         expect(response).to have_http_status(:unprocessable_entity)
       end
-
-      it "does not create a new category when created_by_id is missing" do
-        post categories_url, params: { category: { name: "Sample Category" } }, as: :json
-
-        response_body = Oj.load(response.body)
-        expect(response_body["errors"]).to include("Created by can't be blank")
-        expect(response).to have_http_status(:unprocessable_entity)
-      end
-
-      it "does not create a new category when created_by_id is not the current user" do
-        post categories_url, params: { category: { name: "Sample Category", created_by_id: user.id + 1 } }, as: :json
-
-        response_body = Oj.load(response.body)
-        expect(response_body["errors"]).to include("Created by must exist")
-        expect(response).to have_http_status(:unprocessable_entity)
-      end
     end
   end
 
   describe "PUT /categories/:id" do
-    let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
+    let!(:category) { create(:category, name: "Sample Category", user_id: user.id) }
 
     it "updates the provided category" do
       put category_url(category), params: { category: { name: "Not Sample Category" } }, as: :json
@@ -96,7 +96,7 @@ RSpec.describe "Categories", type: :request do
   end
 
   describe "DELETE /categories/:id" do
-    let!(:category) { create(:category, name: "Sample Category", created_by_id: user.id) }
+    let!(:category) { create(:category, name: "Sample Category", user_id: user.id) }
 
     it "deletes the provided category" do
       delete category_url(category), as: :json

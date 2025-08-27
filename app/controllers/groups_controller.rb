@@ -34,14 +34,12 @@ class GroupsController < ApplicationController
           render json: GroupSerializer.new(@group).serializable_hash.to_json,
                  status: :created
         end
-        format.html { redirect_to @group, notice: "Group was successfully created." }
       else
         format.json do
           render json: {
             errors: @group.errors.full_messages
           }, status: :unprocessable_entity
         end
-        format.html { render :new, status: :unprocessable_entity }
       end
     end
   end
@@ -61,7 +59,7 @@ class GroupsController < ApplicationController
             errors: @group.errors.full_messages
           }, status: :unprocessable_entity
         end
-    end
+      end
   end
 
   # DELETE /groups/1
