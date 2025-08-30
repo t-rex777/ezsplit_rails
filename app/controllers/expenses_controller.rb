@@ -6,7 +6,7 @@ class ExpensesController < ApplicationController
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    pagy_obj, @expenses = pagy(Expense.all)
+    pagy_obj, @expenses = pagy(current_user.expenses)
     options = {
       include: [ :payer, :group, :category, :expenses_users ]
     }
@@ -22,7 +22,7 @@ class ExpensesController < ApplicationController
 
   def create
     ActiveRecord::Base.transaction do
-      @expense = Expense.create!(expense_params.except(:distribution))
+      @expense = current_user.expenses.create!(expense_params.except(:distribution))
       create_expenses_users(@expense)
     end
     render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
@@ -32,7 +32,7 @@ class ExpensesController < ApplicationController
 
   def update
     ActiveRecord::Base.transaction do
-      destroy_expense_users(@expense)
+     @expense.expenses_users.destroy_all
      @expense.update!(expense_params.except(:distribution))
       create_expenses_users(@expense)
     end
@@ -54,16 +54,11 @@ class ExpensesController < ApplicationController
     params[:expense][:distribution].map do |user|
       amount = params[:expense][:split_type] == "percentage" ? user[:amount].to_f * params[:expense][:amount].to_f / 100 : user[:amount].to_f
 
-      expense_user = ExpensesUser.create!(
+      expense.expenses_users.create!(
         user_id: user[:user_id],
-        expense_id: expense.id,
         amount: amount
       )
     end
-  end
-
-  def destroy_expense_users(expense)
-    expense.expenses_users.destroy_all
   end
 
   def validate_expense_split
@@ -94,7 +89,7 @@ class ExpensesController < ApplicationController
   end
 
   def set_expense
-    @expense = Expense.find(params[:id])
+    @expense = current_user.expenses.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { errors: [ "Expense not found" ] }, status: :not_found
   end

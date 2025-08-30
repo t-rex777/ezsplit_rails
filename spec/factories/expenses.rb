@@ -9,5 +9,6 @@ FactoryBot.define do
     association :payer, factory: :user
     association :group
     association :category
+    association :user, factory: :user
   end
 end
