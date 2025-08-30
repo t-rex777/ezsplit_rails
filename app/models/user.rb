@@ -5,6 +5,8 @@ class User < ApplicationRecord
   has_many :groups, through: :group_memberships
   has_many :categories, dependent: :destroy
   has_many :groups, dependent: :destroy
+  has_many :expenses, dependent: :destroy
+  has_many :expenses_users, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
