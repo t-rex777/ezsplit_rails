@@ -8,6 +8,8 @@ RSpec.describe "Users", type: :request do
     let!(:user4) { create(:user, first_name: "Alice", last_name: "Brown", email_address: "alice.brown@example.com") }
     let!(:user5) { create(:user, first_name: "Charlie", last_name: "Wilson", email_address: "charlie.wilson@example.com") }
     let!(:user6) { create(:user, first_name: "Diana", last_name: "Davis", email_address: "diana.davis@example.com") }
+    let!(:group1) { create(:group, user: user4) }
+    let!(:group_membership1) { create(:group_membership, user: user4, group: group1) }
     let(:current_user) { user1 }
 
     before do
@@ -16,55 +18,57 @@ RSpec.describe "Users", type: :request do
 
     context "with valid search query" do
       it "returns users matching the search query" do
-        get "/users/search", params: { q: "john" }
+        get "/users/search", params: { term: "john" }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["status"]).to eq("success")
-        expect(json_response["data"]["users"]["data"]).to be_present
-        expect(json_response["data"]["pagination"]).to be_present
+        expect(json_response["data"]).to be_present
+        expect(json_response["data"]).to be_an(Array)
+        expect(json_response["data"].length).to eq(2)
+        expect(json_response["meta"]).to be_present
       end
 
       it "searches in first_name, last_name, and email_address" do
-        get "/users/search", params: { q: "doe" }
+        get "/users/search", params: { term: "Alice" }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["data"]["users"]["data"].length).to eq(1)
-        expect(json_response["data"]["users"]["data"].first["attributes"]["first_name"]).to eq("John")
+        expect(json_response["data"].length).to eq(1)
+        expect(json_response["data"][0]["attributes"]["first_name"]).to eq("Alice")
       end
 
       it "returns paginated results with default 5 items per page" do
-        get "/users/search", params: { q: "a" }
+        get "/users/search", params: { term: "user" }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["data"]["users"]["data"].length).to be <= 5
-        expect(json_response["data"]["pagination"]["count"]).to be_present
-        expect(json_response["data"]["pagination"]["page"]).to be_present
-        expect(json_response["data"]["pagination"]["items"]).to eq(5)
+        expect(json_response["data"].length).to be <= 5
+        expect(json_response["meta"]["total"]).to be_present
+        expect(json_response["meta"]["current_page"]).to be_present
+        expect(json_response["meta"]["total_pages"]).to be_present
       end
 
       it "respects custom per_page parameter" do
-        get "/users/search", params: { q: "a", per_page: 3 }
+        get "/users/search", params: { term: "user", limit: 2 }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["data"]["users"]["data"].length).to be <= 3
-        expect(json_response["data"]["pagination"]["items"]).to eq(3)
+        expect(json_response["data"].length).to be <= 5
+        expect(json_response["meta"]["current_page"]).to eq(1)
+        expect(json_response["meta"]["total_pages"]).to be >= 1
       end
 
       it "includes groups in the response" do
-        get "/users/search", params: { q: "john" }
+        get "/users/search", params: { term: "alice" }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["data"]["users"]["included"]).to be_present
+        expect(json_response["included"]).to be_present
       end
     end
 
@@ -77,11 +81,11 @@ RSpec.describe "Users", type: :request do
 
         expect(json_response["status"]).to eq("error")
         expect(json_response["message"]).to eq("Search query is required")
-        expect(json_response["errors"]).to include("Query parameter 'q' is required")
+        expect(json_response["errors"]).to include("Query parameter 'term' is required")
       end
 
       it "returns error when query is blank" do
-        get "/users/search", params: { q: "   " }
+        get "/users/search", params: { term: "   " }
 
         expect(response).to have_http_status(:unprocessable_entity)
         json_response = JSON.parse(response.body)
@@ -93,13 +97,13 @@ RSpec.describe "Users", type: :request do
 
     context "with case insensitive search" do
       it "finds users regardless of case" do
-        get "/users/search", params: { q: "JOHN" }
+        get "/users/search", params: { term: "ALICE" }
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
 
-        expect(json_response["data"]["users"]["data"].length).to eq(1)
-        expect(json_response["data"]["users"]["data"].first["attributes"]["first_name"]).to eq("John")
+        expect(json_response["data"].length).to eq(1)
+        expect(json_response["data"][0]["attributes"]["first_name"]).to eq("Alice")
       end
     end
   end

@@ -43,7 +43,7 @@ RSpec.describe "Expenses", type: :request do
           amount: 90,
           split_type: "equal",
           currency: "INR",
-          expense_date: Date.current,
+          expense_date: "2025-08-30",
           settled: false,
           payer_id: user.id,
           group_id: group.id,
@@ -139,7 +139,7 @@ RSpec.describe "Expenses", type: :request do
 
   describe "PUT /expenses/:id" do
     context "with valid parameters" do
-      let(:expense_params) { { expense: { name: "Test Expense", amount: 90, split_type: "equal", currency: "INR", expense_date: Date.current, settled: false, payer_id: user.id, group_id: group.id, category_id: category.id,
+      let(:expense_params) { { expense: { name: "Test Expense", amount: 90, split_type: "equal", currency: "INR", expense_date: "2025-08-30", settled: false, payer_id: user.id, group_id: group.id, category_id: category.id,
         distribution: [
           { user_id: user.id, amount: 30 },
           { user_id: second_user.id, amount: 30 },
