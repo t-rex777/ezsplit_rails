@@ -2,8 +2,8 @@ require 'rails_helper'
 
 RSpec.describe Expense, type: :model do
   let!(:user) { create(:user) }
-  let!(:group) { create(:group, created_by: user) }
-  let!(:category) { create(:category, created_by: user) }
+  let!(:group) { create(:group, user: user) }
+  let!(:category) { create(:category, user: user) }
 
   describe "associations" do
     it { is_expected.to belong_to(:payer).class_name("User").with_foreign_key(:payer_id) }
