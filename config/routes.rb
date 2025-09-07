@@ -6,6 +6,8 @@ Rails.application.routes.draw do
   resources :users, only: %i[ index ]
   resources :expenses
   resources :expenses_users, only: %i[ create update destroy ]
+  resources :invitations,  only: %i[ create update ]
+
   resources :groups do
     resources :group_memberships
   end

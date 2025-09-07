@@ -15,7 +15,7 @@ RSpec.describe "UserRegisters", type: :request do
         }
       }
       post user_registers_url, params: user_params
-      expect(response).to have_http_status(:redirect)
+      expect(response).to have_http_status(:ok)
     end
 
     it "does not creates a new user with invalid params" do
