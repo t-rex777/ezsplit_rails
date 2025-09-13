@@ -1,7 +1,7 @@
 class UsersController < ApplicationController
   # GET /users
   def index
-    pagy_obj, @users = pagy(User.all)
+    pagy_obj, @users = pagy(current_user.friends)
     options = {
       include: [ :groups ]
     }
@@ -23,7 +23,7 @@ class UsersController < ApplicationController
     end
 
     # Search in email_address, first_name, and last_name
-    @users = User.where(
+    @users = current_user.friends.where(
       "email_address LIKE :query OR first_name LIKE :query OR last_name LIKE :query",
       query: "%#{query}%"
     )
@@ -37,6 +37,7 @@ class UsersController < ApplicationController
 
     render json: UserSerializer.new(@users, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
+
 
   private
 

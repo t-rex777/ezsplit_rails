@@ -1,6 +1,7 @@
 class InvitationsController < ApplicationController
   allow_unauthenticated_access only: %i[update]
-  before_action :set_invitation, :verify_invitation_status, :set_invited_user, only: [ :update ]
+  before_action :set_invitation, :verify_invitation_status, only: [ :update ]
+  before_action :set_invited_user, only: [ :create, :update ]
 
   class InvitationExpiredError < StandardError; end
   class InvitationAlreadyAcceptedError < StandardError; end
@@ -12,8 +13,36 @@ class InvitationsController < ApplicationController
   rescue_from InvitationAlreadyAcceptedError, with: :render_invitation_already_accepted
   rescue_from InvitationInvalidTokenError, with: :render_invitation_invalid_token
 
+  # if user present -> just create an invitation and add to friends list
+  # if not present -> TBD
+
   # POST /invitations
   def create
+    if @invited_user.present?
+      if @invited_user.friends.include?(current_user)
+        render json: { message: "#{@invited_user.full_name} is already a friend." }
+        return
+      end
+
+      ActiveRecord::Base.transaction do
+        invitation_params = {
+          email: create_invitation_params[:email_address],
+          inviter: current_user,
+          invited_user: @invited_user,
+          status: :accepted,
+          accepted_at: Time.now
+        }
+
+        @invitation = current_user.invitations.new(invitation_params)
+        @invitation.invited_user.friendships.create!(friend: @invitation.inviter)
+      end
+
+      if @invitation.save
+        render json: { message: "#{@invited_user.full_name} added as friend." }, status: :created
+        return
+      end
+    end
+
     @invitation = current_user.invitations.new(
       email: create_invitation_params[:email_address],
       inviter: current_user
@@ -22,7 +51,6 @@ class InvitationsController < ApplicationController
     if @invitation.save
       # Send invitation email
       UserMailer.invitation_email(@invitation).deliver_now
-
       render json: { message: "Invitation sent successfully." }, status: :created
     else
       render json: { errors: @invitation.errors.full_messages }, status: :unprocessable_entity
