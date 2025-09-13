@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_15_164236) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
   create_table "categories", force: :cascade do |t|
     t.string "name"
     t.string "icon"
@@ -19,6 +19,35 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_15_164236) do
     t.datetime "updated_at", null: false
     t.integer "created_by_id", null: false
     t.index ["created_by_id"], name: "index_categories_on_created_by_id"
+  end
+
+  create_table "expenses", force: :cascade do |t|
+    t.string "name"
+    t.string "notes"
+    t.decimal "amount"
+    t.string "currency"
+    t.integer "payer_id", null: false
+    t.integer "group_id", null: false
+    t.integer "category_id", null: false
+    t.string "split_type"
+    t.date "expense_date"
+    t.boolean "settled"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_expenses_on_category_id"
+    t.index ["group_id"], name: "index_expenses_on_group_id"
+    t.index ["payer_id"], name: "index_expenses_on_payer_id"
+  end
+
+  create_table "expenses_users", force: :cascade do |t|
+    t.integer "expense_id", null: false
+    t.integer "user_id", null: false
+    t.decimal "amount"
+    t.boolean "paid"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expense_id"], name: "index_expenses_users_on_expense_id"
+    t.index ["user_id"], name: "index_expenses_users_on_user_id"
   end
 
   create_table "group_memberships", force: :cascade do |t|
@@ -64,6 +93,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_15_164236) do
   end
 
   add_foreign_key "categories", "users", column: "created_by_id"
+  add_foreign_key "expenses", "categories"
+  add_foreign_key "expenses", "groups"
+  add_foreign_key "expenses", "users", column: "payer_id"
+  add_foreign_key "expenses_users", "expenses"
+  add_foreign_key "expenses_users", "users"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "users"
   add_foreign_key "groups", "users", column: "created_by_id"

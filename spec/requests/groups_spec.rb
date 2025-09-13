@@ -1,16 +1,14 @@
 require "rails_helper"
 
-RSpec.describe GroupsController, type: :controller do
+RSpec.describe "Groups", type: :request do
+  let!(:user1) { create(:user, email_address: "test1@example.com") }
+  let!(:user2) { create(:user, email_address: "test2@example.com") }
+
   before do
-    # Create and set session for user1
-    session = user1.sessions.create!(user_agent: "test", ip_address: "127.0.0.1")
-    cookies.signed[:session_id] = session.id
+    post session_url, params: { email_address: user1.email_address, password: user1.password }
   end
 
-  describe "PUT #update" do
-    let!(:user1) { create(:user, email_address: "test1@example.com") }
-    let!(:user2) { create(:user, email_address: "test2@example.com") }
-
+  describe "PUT /groups/:id" do
     let(:group_params) do
       {
         name: "Test Group",
@@ -25,8 +23,7 @@ RSpec.describe GroupsController, type: :controller do
 
     context "with valid params" do
       it "updates the group with more users" do
-        put :update, params: {
-          id: group.id,
+        put group_url(group), params: {
           group: group_params.merge(user_ids: [ user1.id, user2.id ])
         }
 
@@ -42,8 +39,7 @@ RSpec.describe GroupsController, type: :controller do
         # Verify user1 is initially in the group
         expect(group.users).to include(user1)
 
-        put :update, params: {
-          id: group.id,
+        put group_url(group), params: {
           group: group_params.merge(user_ids: [ user2.id ])
         }
 
