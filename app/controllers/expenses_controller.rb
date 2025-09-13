@@ -6,9 +6,9 @@ class ExpensesController < ApplicationController
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    pagy_obj, @expenses = pagy(Expense.all)
+    pagy_obj, @expenses = pagy(current_user.expenses)
     options = {
-      include: [ :payer, :group, :category ]
+      include: [ :payer, :group, :category, :expenses_users ]
     }
     render json: ExpenseSerializer.new(@expenses, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
@@ -22,7 +22,7 @@ class ExpensesController < ApplicationController
 
   def create
     ActiveRecord::Base.transaction do
-      @expense = Expense.create!(expense_params.except(:distribution))
+      @expense = current_user.expenses.create!(expense_params.except(:distribution))
       create_expenses_users(@expense)
     end
     render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
@@ -31,11 +31,14 @@ class ExpensesController < ApplicationController
   end
 
   def update
-    if @expense.update(expense_params)
-      render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
-    else
-      render json: { errors: @expense.errors.full_messages }, status: :unprocessable_entity
+    ActiveRecord::Base.transaction do
+     @expense.expenses_users.destroy_all
+     @expense.update!(expense_params.except(:distribution))
+      create_expenses_users(@expense)
     end
+      render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
+  rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
+      render json: { errors: [ exception.message ] }, status: :unprocessable_entity
   end
 
   def destroy
@@ -51,9 +54,8 @@ class ExpensesController < ApplicationController
     params[:expense][:distribution].map do |user|
       amount = params[:expense][:split_type] == "percentage" ? user[:amount].to_f * params[:expense][:amount].to_f / 100 : user[:amount].to_f
 
-      expense_user = ExpensesUser.create!(
+      expense.expenses_users.create!(
         user_id: user[:user_id],
-        expense_id: expense.id,
         amount: amount
       )
     end
@@ -81,12 +83,13 @@ class ExpensesController < ApplicationController
     end
   end
 
+  # TODO: if amount is changed, distribution should also be changed
   def expense_params
     params.require(:expense).permit(:name, :amount, :split_type, :currency, :expense_date, :settled, :payer_id, :group_id, :category_id, distribution: [ :user_id, :amount ])
   end
 
   def set_expense
-    @expense = Expense.find(params[:id])
+    @expense = current_user.expenses.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { errors: [ "Expense not found" ] }, status: :not_found
   end

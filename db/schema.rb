@@ -10,15 +10,15 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
   create_table "categories", force: :cascade do |t|
     t.string "name"
     t.string "icon"
     t.string "color"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.integer "created_by_id", null: false
-    t.index ["created_by_id"], name: "index_categories_on_created_by_id"
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_categories_on_user_id"
   end
 
   create_table "expenses", force: :cascade do |t|
@@ -34,9 +34,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
     t.boolean "settled"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
     t.index ["category_id"], name: "index_expenses_on_category_id"
     t.index ["group_id"], name: "index_expenses_on_group_id"
     t.index ["payer_id"], name: "index_expenses_on_payer_id"
+    t.index ["user_id"], name: "index_expenses_on_user_id"
   end
 
   create_table "expenses_users", force: :cascade do |t|
@@ -48,6 +50,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
     t.datetime "updated_at", null: false
     t.index ["expense_id"], name: "index_expenses_users_on_expense_id"
     t.index ["user_id"], name: "index_expenses_users_on_user_id"
+  end
+
+  create_table "friendships", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "friend_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["friend_id"], name: "index_friendships_on_friend_id"
+    t.index ["user_id"], name: "index_friendships_on_user_id"
   end
 
   create_table "group_memberships", force: :cascade do |t|
@@ -64,10 +75,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
   create_table "groups", force: :cascade do |t|
     t.string "name"
     t.text "description"
-    t.integer "created_by_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["created_by_id"], name: "index_groups_on_created_by_id"
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_groups_on_user_id"
+  end
+
+  create_table "invitations", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "token", null: false
+    t.integer "inviter_id", null: false
+    t.integer "invited_user_id"
+    t.integer "status", default: 0
+    t.text "message"
+    t.datetime "expires_at"
+    t.datetime "accepted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_invitations_on_email"
+    t.index ["invited_user_id"], name: "index_invitations_on_invited_user_id"
+    t.index ["inviter_id"], name: "index_invitations_on_inviter_id"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -92,14 +120,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_27_060407) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
-  add_foreign_key "categories", "users", column: "created_by_id"
+  add_foreign_key "categories", "users"
   add_foreign_key "expenses", "categories"
   add_foreign_key "expenses", "groups"
+  add_foreign_key "expenses", "users"
   add_foreign_key "expenses", "users", column: "payer_id"
   add_foreign_key "expenses_users", "expenses"
   add_foreign_key "expenses_users", "users"
   add_foreign_key "group_memberships", "groups"
   add_foreign_key "group_memberships", "users"
-  add_foreign_key "groups", "users", column: "created_by_id"
+  add_foreign_key "groups", "users"
+  add_foreign_key "invitations", "users", column: "invited_user_id"
+  add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "sessions", "users"
 end

@@ -3,13 +3,13 @@ require 'rails_helper'
 RSpec.describe Category, type: :model do
   let!(:user) { create(:user) }
   describe "associations" do
-    it { should belong_to(:created_by).class_name("User").with_foreign_key("created_by_id") }
+    it { should belong_to(:user) }
   end
 
   describe "validations" do
     subject(:category) do
       build(:category,
-      name: "shopping", created_by_id: 1)
+      name: "shopping", user: user)
     end
 
     it "is valid with valid attributes" do
@@ -21,8 +21,8 @@ RSpec.describe Category, type: :model do
       expect(category).to_not be_valid
     end
 
-    it "is not valid without a created_by_id" do
-      category.created_by_id = nil
+    it "is not valid without a user" do
+      category.user = nil
       expect(category).to_not be_valid
     end
   end

@@ -9,6 +9,10 @@ class ApplicationController < ActionController::Base
 
   private
 
+  def current_user
+    @current_user ||= Current.user
+  end
+
   def pagy_metadata(pagy)
       {
         total: pagy.count,

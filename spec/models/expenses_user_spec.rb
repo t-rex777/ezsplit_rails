@@ -2,8 +2,8 @@ require 'rails_helper'
 
 RSpec.describe ExpensesUser, type: :model do
   let!(:user) { create(:user) }
-  let!(:group) { create(:group, created_by: user) }
-  let!(:category) { create(:category, created_by: user) }
+  let!(:group) { create(:group, user: user) }
+  let!(:category) { create(:category, user: user) }
   let!(:expense) { create(:expense, payer: user, group: group, category: category) }
 
   describe 'associations' do

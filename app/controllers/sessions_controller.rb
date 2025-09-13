@@ -21,9 +21,6 @@ class SessionsController < ApplicationController
     render json: UserSerializer.new(session.user, options).serializable_hash.to_json
   end
 
-  def new
-  end
-
   def create
     permitted_params = params.permit(:email_address, :password)
     Rails.logger.info "Login attempt with: #{permitted_params.inspect}"

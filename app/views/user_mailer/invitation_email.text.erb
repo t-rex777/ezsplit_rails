@@ -1,0 +1,32 @@
+You're Invited to <%= @app_name %>!
+
+Hello!
+
+<%= @inviter.first_name %> <%= @inviter.last_name %> has invited you to join <%= @app_name %>!
+
+INVITATION DETAILS:
+- Invited by: <%= @inviter.first_name %> <%= @inviter.last_name %>
+- Email: <%= @invited_email %>
+- What is <%= @app_name %>? A simple and powerful expense splitting app that helps you manage shared costs with friends and family.
+
+With <%= @app_name %>, you can:
+- Split expenses with friends and family easily
+- Track group spending and budgets
+- Never lose track of who owes what
+- Manage shared expenses efficiently
+
+Ready to get started? Click the link below to create your account and accept the invitation!
+
+<%= @registration_url %>
+
+⏰ IMPORTANT: This invitation will expire in 7 days. Please accept it soon!
+
+If you have any questions, feel free to reach out to us or <%= @inviter.first_name %> directly.
+
+Best regards,
+The <%= @app_name %> Team
+
+---
+This invitation was sent to <%= @invited_email %> by <%= @inviter.first_name %> <%= @inviter.last_name %>.
+If you didn't expect this invitation, please ignore this email.
+Invitation expires: <%= @invitation.expires_at.strftime("%B %d, %Y at %I:%M %p") %>

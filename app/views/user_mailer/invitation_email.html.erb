@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>You're Invited to <%= @app_name %></title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background-color: #4CAF50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px 8px 0 0;
+      }
+      .content {
+        background-color: #f9f9f9;
+        padding: 30px;
+        border-radius: 0 0 8px 8px;
+      }
+      .button {
+        display: inline-block;
+        background-color: #4CAF50;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 4px;
+        margin: 20px 0;
+        font-weight: bold;
+      }
+      .button:hover {
+        background-color: #45a049;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 12px;
+        color: #666;
+      }
+      .invitation-details {
+        background-color: #e8f5e8;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+        border-left: 4px solid #4CAF50;
+      }
+      .expiry-notice {
+        background-color: #fff3cd;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 15px 0;
+        border-left: 4px solid #ffc107;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>You're Invited to <%= @app_name %>!</h1>
+    </div>
+    
+    <div class="content">
+      <h2>Hello!</h2>
+      
+      <p><strong><%= @inviter.first_name %> <%= @inviter.last_name %></strong> has invited you to join <strong><%= @app_name %></strong>!</p>
+      
+      <div class="invitation-details">
+        <p><strong>Invited by:</strong> <%= @inviter.first_name %> <%= @inviter.last_name %></p>
+        <p><strong>Email:</strong> <%= @invited_email %></p>
+        <p><strong>What is <%= @app_name %>?</strong> A simple and powerful expense splitting app that helps you manage shared costs with friends and family.</p>
+      </div>
+      
+      <p>With <%= @app_name %>, you can:</p>
+      <ul>
+        <li>Split expenses with friends and family easily</li>
+        <li>Track group spending and budgets</li>
+        <li>Never lose track of who owes what</li>
+        <li>Manage shared expenses efficiently</li>
+      </ul>
+      
+      <p>Ready to get started? Click the button below to create your account and accept the invitation!</p>
+      
+      <div style="text-align: center;">
+        <a href="<%= @registration_url %>" class="button">Accept Invitation & Create Account</a>
+      </div>
+      
+      <div class="expiry-notice">
+        <strong>⏰ Important:</strong> This invitation will expire in 7 days. Please accept it soon!
+      </div>
+      
+      <p>If you have any questions, feel free to reach out to us or <%= @inviter.first_name %> directly.</p>
+      
+      <p>Best regards,<br>
+      The <%= @app_name %> Team</p>
+    </div>
+    
+    <div class="footer">
+      <p>This invitation was sent to <%= @invited_email %> by <%= @inviter.first_name %> <%= @inviter.last_name %>.</p>
+      <p>If you didn't expect this invitation, please ignore this email.</p>
+      <p>Invitation expires: <%= @invitation.expires_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+    </div>
+  </body>
+</html>

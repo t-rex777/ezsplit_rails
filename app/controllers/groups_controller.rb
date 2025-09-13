@@ -3,7 +3,7 @@ class GroupsController < ApplicationController
 
   # GET /groups
   def index
-    pagy_obj, @groups = pagy(Group.all)
+    pagy_obj, @groups = pagy(current_user.groups)
     options = {
       include: [ :users ]
     }
@@ -12,78 +12,47 @@ class GroupsController < ApplicationController
 
   # GET /groups/1
   def show
-    respond_to do |format|
-      format.json do
-        render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
-      end
-      format.html
-    end
-  end
-
-  # GET /groups/new
-  def new
-    @group = Group.new
-  end
-
-  # GET /groups/1/edit
-  def edit
+     render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
   end
 
   # POST /groups
   def create
-    @group = Group.new(group_params)
+    @group = current_user.groups.new(group_params)
 
-    respond_to do |format|
       if @group.save
-        format.json do
           render json: GroupSerializer.new(@group).serializable_hash.to_json,
-                 status: :created
-        end
-        format.html { redirect_to @group, notice: "Group was successfully created." }
+          status: :created
       else
-        format.json do
           render json: {
             errors: @group.errors.full_messages
           }, status: :unprocessable_entity
-        end
-        format.html { render :new, status: :unprocessable_entity }
       end
-    end
   end
 
   # PATCH/PUT /groups/1
   def update
-    respond_to do |format|
       if @group.update(group_params)
         # Handle member updates
         if params[:group][:user_ids].present?
           update_members(params[:group][:user_ids])
         end
-
-        format.json do
           render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
-        end
-        format.html { redirect_to @group, notice: "Group was successfully updated." }
       else
-        format.json do
           render json: {
             errors: @group.errors.full_messages
           }, status: :unprocessable_entity
-        end
-        format.html { render :edit, status: :unprocessable_entity }
       end
-    end
   end
 
   # DELETE /groups/1
   def destroy
-    @group.destroy!
-
-    respond_to do |format|
-      format.json do
+    if @group.destroy! do
         render json: { message: "Group was successfully deleted" }, status: :ok
       end
-      format.html { redirect_to groups_path, status: :see_other, notice: "Group was successfully destroyed." }
+    else
+      render json: {
+        errors: @group.errors.full_messages
+      }, status: :unprocessable_entity
     end
   end
 
@@ -112,20 +81,15 @@ class GroupsController < ApplicationController
 
   private
     def set_group
-      @group = Group.find(params.fetch(:id))
+      @group = current_user.groups.find(params.fetch(:id))
     rescue ActiveRecord::RecordNotFound
-      respond_to do |format|
-        format.json do
           render json: {
             errors: [ "Group not found" ]
           }, status: :not_found
-        end
-        format.html { redirect_to groups_path, alert: "Group not found" }
-      end
     end
 
     def group_params
-      params.require(:group).permit(:name, :description, :created_by_id, user_ids: [])
+      params.require(:group).permit(:name, :description, user_ids: [])
     end
 
     def update_members(user_ids)
