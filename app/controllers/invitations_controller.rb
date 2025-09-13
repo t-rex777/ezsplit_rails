@@ -19,8 +19,10 @@ class InvitationsController < ApplicationController
       inviter: current_user
     )
 
-    # trigger an email job to send the invitation email
     if @invitation.save
+      # Send invitation email
+      UserMailer.invitation_email(@invitation).deliver_now
+
       render json: { message: "Invitation sent successfully." }, status: :created
     else
       render json: { errors: @invitation.errors.full_messages }, status: :unprocessable_entity

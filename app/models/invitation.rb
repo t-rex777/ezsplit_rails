@@ -23,6 +23,6 @@ class Invitation < ApplicationRecord
   private
 
   def set_expiration
-    expires_at = Time.now + 7.days
+    self.expires_at ||= Time.now + 7.days
   end
 end

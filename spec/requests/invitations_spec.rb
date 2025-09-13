@@ -25,6 +25,16 @@ RSpec.describe "Invitations", type: :request do
           }.to change(Invitation, :count).by(1)
         end
 
+        it "sends an invitation email" do
+          expect {
+            post invitations_path, params: valid_params
+          }.to change { ActionMailer::Base.deliveries.count }.by(1)
+
+          last_email = ActionMailer::Base.deliveries.last
+          expect(last_email.to).to include("friend@example.com")
+          expect(last_email.subject).to eq("You're invited to join EZSplit!")
+        end
+
         it "returns success response" do
           post invitations_path, params: valid_params
 
