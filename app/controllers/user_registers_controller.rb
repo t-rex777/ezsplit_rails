@@ -5,6 +5,8 @@ class UserRegistersController < ApplicationController
     @user = User.new(user_params)
 
     if @user.save
+      UserMailer.welcome_email(@user).deliver_now
+
       if params[:token]
         redirect_to update_invitations_path(token: params[:token], email_address: @user.email_address)
       end

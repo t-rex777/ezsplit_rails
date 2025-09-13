@@ -32,13 +32,16 @@ RSpec.describe Invitation, type: :model do
 
   context "callbacks" do
     describe "#set_expiration" do
-      it "sets expires_at to 7 days from now on creation" do
-        Timecop.freeze do
-          invitation = create(:invitation)
-          expect(invitation.expires_at).to eq(Time.now + 7.days)
-        end
+      before do
+      Timecop.freeze(Time.now)
+      end
 
+      after do
         Timecop.return
+      end
+      it "sets expires_at to 7 days from now on creation" do
+          invitation = create(:invitation)
+          expect(invitation.expires_at).to eq(Time.current + 7.days)
       end
 
       it "does not modify expires_at on update" do
