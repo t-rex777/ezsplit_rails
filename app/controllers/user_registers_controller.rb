@@ -7,11 +7,13 @@ class UserRegistersController < ApplicationController
     if @user.save
       UserMailer.welcome_email(@user).deliver_now
 
+      # Handle invitation acceptance if token is provided
       if params[:token]
-        redirect_to update_invitations_path(token: params[:token], email_address: @user.email_address)
+        handle_invitation_acceptance(@user, params[:token])
       end
-        start_new_session_for(@user)
-        render json: UserSerializer.new(@user).serializable_hash.to_json
+
+      start_new_session_for(@user)
+      render json: UserSerializer.new(@user).serializable_hash.to_json
     else
       render json: {
         status: :error,
@@ -22,6 +24,21 @@ class UserRegistersController < ApplicationController
   end
 
   private
+
+  def handle_invitation_acceptance(user, token)
+    # Find invitation by token
+    invitation = Invitation.find_by(token: token)
+
+    # Use the service to handle invitation acceptance
+    service = InvitationAcceptanceService.new(invitation, user, token)
+    result = service.call
+        
+    unless result[:success]
+      Rails.logger.error "Failed to accept invitation: #{result[:error]}"
+      # Note: We don't fail the user registration if invitation acceptance fails
+      # The user is still created successfully, but the invitation remains pending
+    end
+  end
 
   def user_params
     params.require(:user).permit(
