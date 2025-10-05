@@ -6,7 +6,12 @@ class ExpensesController < ApplicationController
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    pagy_obj, @expenses = pagy(current_user.expenses)
+    if params[:group_id].blank?
+      pagy_obj, @expenses = pagy(current_user.expenses)
+    else
+      pagy_obj, @expenses = pagy(current_user.expenses.where(group_id: params[:group_id]))
+    end
+
     options = {
       include: [ :payer, :group, :category, :expenses_users ]
     }
