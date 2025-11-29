@@ -16,7 +16,8 @@ class SessionsController < ApplicationController
   def show
     session = find_session_by_cookie
     options = {
-      include: [ :groups ]
+      include: [ :groups ],
+      params: { current_user: session.user }
     }
     render json: UserSerializer.new(session.user, options).serializable_hash.to_json
   end
