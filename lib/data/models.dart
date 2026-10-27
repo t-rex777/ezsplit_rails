@@ -1,3 +1,7 @@
+import '../domain/money.dart';
+import '../domain/split.dart';
+import 'jsonapi.dart';
+
 class User {
   const User({
     required this.id,
@@ -35,3 +39,483 @@ class User {
     );
   }
 }
+
+class Group {
+  const Group({
+    required this.id,
+    required this.name,
+    required this.ownerId,
+    required this.members,
+    required this.myNetPaise,
+    this.description,
+    this.lastActivityAt,
+  });
+
+  final int id;
+  final String name;
+  final String? description;
+  final int ownerId;
+  final List<User> members;
+
+  /// What the group owes me (positive) or I owe it (negative), from `my_net`.
+  final int myNetPaise;
+  final DateTime? lastActivityAt;
+
+  factory Group.fromJson(Map<String, dynamic> resource, JsonApiIndex included) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    final last = a['last_activity_at'] as String?;
+    return Group(
+      id: int.parse(resource['id'] as String),
+      name: a['name'] as String,
+      description: a['description'] as String?,
+      ownerId: (a['owner_id'] as num).toInt(),
+      members: [
+        for (final u in included.many(resource, 'users')) User.fromJson(u),
+      ],
+      myNetPaise: paiseOf(a['my_net']),
+      lastActivityAt: last == null ? null : DateTime.parse(last),
+    );
+  }
+}
+
+/// A row of a group's membership list. Group payloads carry no membership ids.
+class Membership {
+  const Membership({
+    required this.id,
+    required this.userId,
+    required this.active,
+  });
+
+  final int id;
+  final int userId;
+  final bool active;
+
+  factory Membership.fromJson(Map<String, dynamic> resource) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    return Membership(
+      id: int.parse(resource['id'] as String),
+      userId: (a['user_id'] as num).toInt(),
+      active: a['active'] as bool? ?? a['left_at'] == null,
+    );
+  }
+}
+
+class Category {
+  const Category({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+  });
+
+  final int id;
+  final String name;
+  final String icon;
+  final String color;
+
+  factory Category.fromJson(Map<String, dynamic> resource) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    return Category(
+      id: int.parse(resource['id'] as String),
+      name: a['name'] as String,
+      icon: a['icon'] as String,
+      color: a['color'] as String,
+    );
+  }
+}
+
+class Share {
+  const Share({required this.userId, required this.paise});
+
+  final int userId;
+  final int paise;
+
+  factory Share.fromJson(Map<String, dynamic> resource) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    return Share(
+      userId: (a['user_id'] as num).toInt(),
+      paise: paiseOf(a['amount']),
+    );
+  }
+}
+
+enum SplitType {
+  equal('equal'),
+  percentage('percentage'),
+  exact('exact');
+
+  const SplitType(this.api);
+
+  /// The string the server uses.
+  final String api;
+
+  static SplitType fromApi(String value) => SplitType.values.firstWhere(
+    (t) => t.api == value,
+    orElse: () => throw FormatException('Unknown split type: $value'),
+  );
+}
+
+class Expense {
+  const Expense({
+    required this.id,
+    required this.name,
+    required this.paise,
+    required this.currency,
+    required this.splitType,
+    required this.date,
+    required this.payer,
+    required this.category,
+    required this.shares,
+    required this.creatorId,
+    required this.myAmountPaise,
+    this.notes,
+    this.groupId,
+  });
+
+  final int id;
+  final String name;
+  final int paise;
+  final String currency;
+  final SplitType splitType;
+  final DateTime date;
+  final String? notes;
+  final User payer;
+  final int? groupId;
+  final Category category;
+  final List<Share> shares;
+  final int creatorId;
+
+  /// From `current_user_amount`: positive when I am owed, negative when I owe.
+  final int myAmountPaise;
+
+  factory Expense.fromJson(
+    Map<String, dynamic> resource,
+    JsonApiIndex included,
+  ) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    final payer = included.one(resource, 'payer');
+    final category = included.one(resource, 'category');
+    if (payer == null || category == null) {
+      throw const FormatException('Expense needs its payer and category');
+    }
+    final groupRef = (resource['relationships'] as Map)['group'] as Map?;
+    final group = groupRef?['data'] as Map?;
+    return Expense(
+      id: int.parse(resource['id'] as String),
+      name: a['name'] as String,
+      paise: paiseOf(a['amount']),
+      currency: a['currency'] as String,
+      splitType: SplitType.fromApi(a['split_type'] as String),
+      date: DateTime.parse(a['expense_date'] as String),
+      notes: a['notes'] as String?,
+      payer: User.fromJson(payer),
+      groupId: group == null ? null : int.parse(group['id'] as String),
+      category: Category.fromJson(category),
+      shares: [
+        for (final s in included.many(resource, 'expenses_users'))
+          Share.fromJson(s),
+      ],
+      creatorId: (a['creator_id'] as num).toInt(),
+      myAmountPaise: paiseOf(a['current_user_amount']),
+    );
+  }
+}
+
+class BalanceRow {
+  const BalanceRow({
+    required this.userId,
+    required this.firstName,
+    required this.lastName,
+    required this.currency,
+    required this.paise,
+  });
+
+  final int userId;
+  final String firstName;
+  final String lastName;
+  final String currency;
+  final int paise;
+
+  factory BalanceRow.fromJson(Map<String, dynamic> row) => BalanceRow(
+    userId: (row['user_id'] as num).toInt(),
+    firstName: row['first_name'] as String? ?? '',
+    lastName: row['last_name'] as String? ?? '',
+    currency: row['currency'] as String,
+    paise: paiseOf(row['amount']),
+  );
+}
+
+class Settlement {
+  const Settlement({
+    required this.id,
+    required this.payerId,
+    required this.payeeId,
+    required this.paise,
+    required this.settledOn,
+    this.groupId,
+  });
+
+  final int id;
+  final int payerId;
+  final int payeeId;
+  final int paise;
+  final int? groupId;
+  final DateTime settledOn;
+
+  factory Settlement.fromJson(Map<String, dynamic> resource) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    return Settlement(
+      id: int.parse(resource['id'] as String),
+      payerId: (a['payer_id'] as num).toInt(),
+      payeeId: (a['payee_id'] as num).toInt(),
+      paise: paiseOf(a['amount']),
+      groupId: (a['group_id'] as num?)?.toInt(),
+      settledOn: DateTime.parse(a['settled_on'] as String),
+    );
+  }
+}
+
+class CategorySpend {
+  const CategorySpend({
+    required this.name,
+    required this.icon,
+    required this.color,
+    required this.paise,
+  });
+
+  final String name;
+  final String icon;
+  final String color;
+  final int paise;
+
+  factory CategorySpend.fromJson(Map<String, dynamic> row) => CategorySpend(
+    name: row['name'] as String,
+    icon: row['icon'] as String,
+    color: row['color'] as String,
+    paise: paiseOf(row['amount']),
+  );
+}
+
+class OtherCurrencyTotals {
+  const OtherCurrencyTotals({
+    required this.currency,
+    required this.youOwePaise,
+    required this.owedToYouPaise,
+  });
+
+  final String currency;
+  final int youOwePaise;
+  final int owedToYouPaise;
+
+  factory OtherCurrencyTotals.fromJson(Map<String, dynamic> row) =>
+      OtherCurrencyTotals(
+        currency: row['currency'] as String,
+        youOwePaise: paiseOf(row['you_owe']),
+        owedToYouPaise: paiseOf(row['owed_to_you']),
+      );
+}
+
+class MonthlySummary {
+  const MonthlySummary({
+    required this.month,
+    required this.mySharePaise,
+    required this.youOwePaise,
+    required this.owedToYouPaise,
+    required this.categories,
+    required this.otherCurrencies,
+  });
+
+  /// "2026-10".
+  final String month;
+  final int mySharePaise;
+  final int youOwePaise;
+  final int owedToYouPaise;
+  final List<CategorySpend> categories;
+  final List<OtherCurrencyTotals> otherCurrencies;
+
+  factory MonthlySummary.fromJson(Map<String, dynamic> json) => MonthlySummary(
+    month: json['month'] as String,
+    mySharePaise: paiseOf(json['my_share']),
+    youOwePaise: paiseOf(json['you_owe']),
+    owedToYouPaise: paiseOf(json['owed_to_you']),
+    categories: [
+      for (final c in json['categories'] as List<dynamic>)
+        CategorySpend.fromJson(c as Map<String, dynamic>),
+    ],
+    otherCurrencies: [
+      for (final c in json['other_currencies'] as List<dynamic>)
+        OtherCurrencyTotals.fromJson(c as Map<String, dynamic>),
+    ],
+  );
+}
+
+class PayerTotal {
+  const PayerTotal({
+    required this.userId,
+    required this.firstName,
+    required this.lastName,
+    required this.paise,
+  });
+
+  final int userId;
+  final String firstName;
+  final String lastName;
+  final int paise;
+
+  factory PayerTotal.fromJson(Map<String, dynamic> row) => PayerTotal(
+    userId: (row['user_id'] as num).toInt(),
+    firstName: row['first_name'] as String? ?? '',
+    lastName: row['last_name'] as String? ?? '',
+    paise: paiseOf(row['amount']),
+  );
+}
+
+class GroupTotals {
+  const GroupTotals({
+    required this.totalSpentPaise,
+    required this.mySharePaise,
+    required this.iPaidPaise,
+    required this.categories,
+    required this.paidBy,
+  });
+
+  final int totalSpentPaise;
+  final int mySharePaise;
+  final int iPaidPaise;
+  final List<CategorySpend> categories;
+  final List<PayerTotal> paidBy;
+
+  factory GroupTotals.fromJson(Map<String, dynamic> json) => GroupTotals(
+    totalSpentPaise: paiseOf(json['total_spent']),
+    mySharePaise: paiseOf(json['my_share']),
+    iPaidPaise: paiseOf(json['i_paid']),
+    categories: [
+      for (final c in json['categories'] as List<dynamic>)
+        CategorySpend.fromJson(c as Map<String, dynamic>),
+    ],
+    paidBy: [
+      for (final p in json['paid_by'] as List<dynamic>)
+        PayerTotal.fromJson(p as Map<String, dynamic>),
+    ],
+  );
+}
+
+enum ExpenseSort {
+  newest('newest'),
+  oldest('oldest'),
+  amountDesc('amount_desc'),
+  amountAsc('amount_asc');
+
+  const ExpenseSort(this.api);
+  final String api;
+}
+
+enum PaidBy {
+  me('me'),
+  others('others');
+
+  const PaidBy(this.api);
+  final String api;
+}
+
+class ExpenseQuery {
+  const ExpenseQuery({
+    this.groupId,
+    this.q,
+    this.categoryIds = const [],
+    this.paidBy,
+    this.from,
+    this.to,
+    this.sort,
+    this.page,
+  });
+
+  final int? groupId;
+  final String? q;
+  final List<int> categoryIds;
+  final PaidBy? paidBy;
+  final DateTime? from;
+  final DateTime? to;
+  final ExpenseSort? sort;
+  final int? page;
+
+  /// Only the filters that are set; the server defaults the rest.
+  Map<String, dynamic> toQuery() => {
+    if (groupId != null) 'group_id': groupId,
+    if (q != null && q!.isNotEmpty) 'q': q,
+    if (categoryIds.isNotEmpty) 'category_ids[]': categoryIds,
+    if (paidBy != null) 'paid_by': paidBy!.api,
+    if (from != null) 'from': isoDate(from!),
+    if (to != null) 'to': isoDate(to!),
+    if (sort != null) 'sort': sort!.api,
+    if (page != null) 'page': page,
+  };
+}
+
+class NewExpense {
+  const NewExpense({
+    required this.name,
+    required this.paise,
+    required this.date,
+    required this.payerId,
+    required this.categoryId,
+    required this.splitType,
+    required this.distribution,
+    this.groupId,
+    this.notes,
+  });
+
+  final String name;
+  final int paise;
+  final DateTime date;
+  final int payerId;
+  final int? groupId;
+  final int categoryId;
+  final SplitType splitType;
+  final String? notes;
+
+  /// Per person, in the order they appear on the split. The value means:
+  /// equal: ignored (only the user ids matter); percentage: the percent;
+  /// exact: the person's amount in paise.
+  final List<MapEntry<int, num>> distribution;
+
+  Map<String, dynamic> toJson() => {
+    'expense': {
+      'name': name,
+      'amount': paiseToApi(paise),
+      'currency': 'INR',
+      'expense_date': isoDate(date),
+      'payer_id': payerId,
+      'group_id': groupId,
+      'category_id': categoryId,
+      'split_type': splitType.api,
+      'notes': notes,
+      'distribution': [
+        for (final e in _entries()) {'user_id': e.key, 'amount': e.value},
+      ],
+    },
+  };
+
+  List<MapEntry<int, String>> _entries() {
+    switch (splitType) {
+      case SplitType.equal:
+        final shares = splitEqual(paise, [for (final e in distribution) e.key]);
+        return [
+          for (final e in distribution)
+            MapEntry(e.key, paiseToApi(shares[e.key]!)),
+        ];
+      case SplitType.percentage:
+        return [
+          for (final e in distribution) MapEntry(e.key, e.value.toString()),
+        ];
+      case SplitType.exact:
+        return [
+          for (final e in distribution)
+            MapEntry(e.key, paiseToApi(e.value.toInt())),
+        ];
+    }
+  }
+}
+
+String isoDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
