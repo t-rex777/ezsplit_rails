@@ -160,19 +160,22 @@ class _NavRow extends StatelessWidget {
       onTap: onTap,
       child: BrutalCard(
         onTap: onTap,
-        child: Row(
-          children: [
-            Icon(icon, color: c.ink),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kMinTap),
+          child: Row(
+            children: [
+              Icon(icon, color: c.ink),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
               ),
-            ),
-            Icon(Symbols.chevron_right, color: c.ink),
-          ],
+              Icon(Symbols.chevron_right, color: c.ink),
+            ],
+          ),
         ),
       ),
     );

@@ -32,6 +32,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
   DateTime? _dob;
   bool _saving = false;
   String? _error;
+  bool _submitted = false;
 
   @override
   void initState() {
@@ -58,7 +59,14 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
     _dobText.text = dob == null ? '' : DateFormat('d MMM yyyy').format(dob);
   }
 
-  bool get _canSave => _first.text.trim().isNotEmpty && !_saving;
+  // The server requires all four, so none may be empty.
+  String? _required(bool missing) => _submitted && missing ? 'Required' : null;
+
+  bool get _valid =>
+      _first.text.trim().isNotEmpty &&
+      _last.text.trim().isNotEmpty &&
+      _phone.text.trim().isNotEmpty &&
+      _dob != null;
 
   void _back() {
     if (context.canPop()) {
@@ -82,7 +90,8 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
   Future<void> _save() async {
     final repo = ref.read(usersRepositoryProvider);
     final session = ref.read(sessionProvider.notifier);
-    final phone = _phone.text.trim();
+    setState(() => _submitted = true);
+    if (!_valid) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -92,8 +101,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
       updated = await repo.updateMe(
         firstName: _first.text.trim(),
         lastName: _last.text.trim(),
-        // An empty phone on a user with none sends nothing.
-        phone: phone.isEmpty && _user.phone == null ? null : phone,
+        phone: _phone.text.trim(),
         dob: _dob,
       );
     } catch (e) {
@@ -150,12 +158,22 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                   ),
                   BrutalPill(
                     label: 'Save',
-                    selected: _canSave,
+                    selected: !_saving,
                     color: c.green,
-                    onTap: _canSave ? _save : null,
+                    onTap: _saving ? null : _save,
                   ),
                 ],
               ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: text.bodyMedium?.copyWith(
+                    color: c.negative,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Center(
                 child: Stack(
@@ -199,6 +217,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                     child: BrutalInput(
                       label: 'First name',
                       controller: _first,
+                      errorText: _required(_first.text.trim().isEmpty),
                       onChanged: (_) => setState(() => _error = null),
                     ),
                   ),
@@ -207,6 +226,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                     child: BrutalInput(
                       label: 'Last name',
                       controller: _last,
+                      errorText: _required(_last.text.trim().isEmpty),
                       onChanged: (_) => setState(() => _error = null),
                     ),
                   ),
@@ -217,6 +237,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                 label: 'Phone',
                 controller: _phone,
                 keyboardType: TextInputType.phone,
+                errorText: _required(_phone.text.trim().isEmpty),
                 onChanged: (_) => setState(() => _error = null),
               ),
               const SizedBox(height: 14),
@@ -225,6 +246,7 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                 controller: _dobText,
                 readOnly: true,
                 onTap: _pickDob,
+                errorText: _required(_dob == null),
                 suffix: Icon(Symbols.calendar_month, color: c.ink),
               ),
               const SizedBox(height: 14),
@@ -241,16 +263,6 @@ class _EditDetailsScreenState extends ConsumerState<EditDetailsScreen> {
                   color: c.ink.withValues(alpha: 0.7),
                 ),
               ),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _error!,
-                  style: text.bodyMedium?.copyWith(
-                    color: c.negative,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
             ],
           ),
         ),

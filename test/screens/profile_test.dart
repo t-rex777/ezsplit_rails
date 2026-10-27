@@ -65,6 +65,17 @@ Future<ProviderContainer> pumpProfile(
   return container;
 }
 
+FakeAuthRepository _fullAuth() => FakeAuthRepository(
+  current: User(
+    id: 1,
+    firstName: 'Neha',
+    lastName: 'Kapoor',
+    email: 'neha@gmail.com',
+    phone: '9876543210',
+    dob: DateTime(1996, 3, 12),
+  ),
+);
+
 Finder _button(String label) => find.widgetWithText(BrutalButton, label);
 
 /// Pills and round buttons, found by the label they give assistive tech.
@@ -203,7 +214,12 @@ void main() {
       tester,
     ) async {
       final users = FakeUsersRepository();
-      final c = await pumpProfile(tester, users: users, path: '/profile');
+      final c = await pumpProfile(
+        tester,
+        auth: _fullAuth(),
+        users: users,
+        path: '/profile',
+      );
       await tester.tap(find.text('Edit personal details'));
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextField, 'Neha'), 'Milisha');
@@ -215,25 +231,86 @@ void main() {
       expect(users.updates, hasLength(1));
       expect(users.updates.single['firstName'], 'Milisha');
       expect(users.updates.single['lastName'], 'Saran');
+      expect(users.updates.single['phone'], '9876543210');
+      expect(users.updates.single['dob'], DateTime(1996, 3, 12));
+      expect(isoDate(users.updates.single['dob'] as DateTime), '1996-03-12');
       expect(c.read(sessionProvider).value!.firstName, 'Milisha');
       expect(locationOf(c), '/profile');
       expect(find.text('Milisha Saran'), findsOneWidget);
       expect(find.text('MS'), findsOneWidget);
     });
 
-    testWidgets('Save is disabled without a first name and while saving', (
+    for (final (field, current) in [
+      ('Neha', 'first name'),
+      ('Kapoor', 'last name'),
+      ('9876543210', 'phone'),
+    ]) {
+      testWidgets('an empty $current blocks the save with Required', (
+        tester,
+      ) async {
+        final users = FakeUsersRepository();
+        await pumpProfile(
+          tester,
+          auth: _fullAuth(),
+          users: users,
+          path: '/profile/details',
+        );
+        expect(find.text('Required'), findsNothing);
+        await tester.enterText(find.widgetWithText(TextField, field), '  ');
+        await tester.pump();
+        await tester.tap(_surface('Save'));
+        await tester.pumpAndSettle();
+        expect(find.text('Required'), findsOneWidget);
+        expect(users.updates, isEmpty);
+      });
+    }
+
+    testWidgets('a missing date of birth blocks the save with Required', (
       tester,
     ) async {
-      final users = FakeUsersRepository()..updateGate = Completer<void>();
-      await pumpProfile(tester, users: users, path: '/profile/details');
-      await tester.enterText(find.widgetWithText(TextField, 'Neha'), '  ');
-      await tester.pump();
+      final users = FakeUsersRepository();
+      await pumpProfile(
+        tester,
+        auth: FakeAuthRepository(
+          current: const User(
+            id: 1,
+            firstName: 'Neha',
+            lastName: 'Kapoor',
+            email: 'neha@gmail.com',
+            phone: '9876543210',
+          ),
+        ),
+        users: users,
+        path: '/profile/details',
+      );
       await tester.tap(_surface('Save'));
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text('Required'), findsOneWidget);
       expect(users.updates, isEmpty);
+    });
 
-      await tester.enterText(find.byType(TextField).first, 'Milisha');
-      await tester.pump();
+    testWidgets('the date picker stops at today', (tester) async {
+      await pumpProfile(tester, auth: _fullAuth(), path: '/profile/details');
+      await tester.tap(find.text('12 Mar 1996'));
+      await tester.pumpAndSettle();
+      final picker = tester.widget<DatePickerDialog>(
+        find.byType(DatePickerDialog),
+      );
+      final now = DateTime.now();
+      expect(
+        DateUtils.dateOnly(picker.lastDate),
+        DateTime(now.year, now.month, now.day),
+      );
+    });
+
+    testWidgets('Save posts once and is inert while saving', (tester) async {
+      final users = FakeUsersRepository()..updateGate = Completer<void>();
+      await pumpProfile(
+        tester,
+        auth: _fullAuth(),
+        users: users,
+        path: '/profile/details',
+      );
       await tester.tap(_surface('Save'));
       await tester.pump();
       await tester.tap(_surface('Save'));
@@ -243,7 +320,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('a rejected save shows the server message and stays', (
+    testWidgets('a rejected save shows the server message near the top', (
       tester,
     ) async {
       final users = FakeUsersRepository()
@@ -253,14 +330,17 @@ void main() {
         );
       final c = await pumpProfile(
         tester,
+        auth: _fullAuth(),
         users: users,
         path: '/profile/details',
       );
-      await tester.enterText(find.byType(TextField).first, 'Milisha');
-      await tester.pump();
       await tester.tap(_surface('Save'));
       await tester.pumpAndSettle();
       expect(find.text('Phone is invalid'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Phone is invalid')).dy,
+        lessThan(tester.getTopLeft(find.text('First name')).dy),
+      );
       expect(locationOf(c), '/profile/details');
     });
 
@@ -400,6 +480,28 @@ void main() {
         },
       ]);
       expect(find.text('Eating out'), findsOneWidget);
+    });
+
+    testWidgets('editing keeps an icon that is not a preset', (tester) async {
+      const hotel = Category(
+        id: 7,
+        name: 'Hotels',
+        icon: 'hotel',
+        color: '#B5D4F4',
+      );
+      final cats = FakeCategoriesRepository([hotel]);
+      await pumpProfile(tester, categories: cats, path: '/profile/categories');
+      await tester.tap(find.byTooltip('Hotels options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Stays');
+      await tester.pump();
+      await tester.tap(_button('Save'));
+      await tester.pumpAndSettle();
+      expect(cats.written, [
+        {'id': 7, 'name': 'Stays', 'icon': 'hotel', 'color': '#B5D4F4'},
+      ]);
     });
 
     testWidgets('deleting asks first and shows a refusal as is', (
