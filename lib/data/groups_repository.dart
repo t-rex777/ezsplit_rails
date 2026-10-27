@@ -20,7 +20,8 @@ class GroupsRepository {
 
   Future<Group> get(int id) async => _group(await _api.get('/groups/$id'));
 
-  Future<Group> create(String name, String? description) async => _group(
+  /// The create response has no `included` members, so this re-reads the group.
+  Future<Group> create(String name, String? description) async => _reload(
     await _api.post(
       '/groups',
       body: {
@@ -30,7 +31,7 @@ class GroupsRepository {
   );
 
   Future<Group> update(int id, {String? name, String? description}) async =>
-      _group(
+      _reload(
         await _api.patch(
           '/groups/$id',
           body: {
@@ -52,7 +53,7 @@ class GroupsRepository {
       for (final u in userIds)
         if (!current.members.any((m) => m.id == u)) u,
     ];
-    return _group(
+    return _reload(
       await _api.post(
         '/groups/$id/add_members',
         body: {
@@ -86,6 +87,10 @@ class GroupsRepository {
     final json = await _api.get('/groups/$id/totals');
     return parseOrThrow(() => GroupTotals.fromJson(json));
   }
+
+  /// Mutation responses can omit `included`, so read the id and fetch again.
+  Future<Group> _reload(Map<String, dynamic> json) =>
+      get(parseOrThrow(() => int.parse(JsonApiDoc(json).data['id'] as String)));
 
   Group _group(Map<String, dynamic> json) => parseOrThrow(() {
     final doc = JsonApiDoc(json);

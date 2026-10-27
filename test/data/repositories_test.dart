@@ -281,7 +281,14 @@ void main() {
       await repo.create('Trip', 'd');
       await repo.update(1, name: 'New');
       await repo.delete(1);
-      expect(sent.map((o) => o.method), ['GET', 'POST', 'PATCH', 'DELETE']);
+      expect(sent.map((o) => o.method), [
+        'GET',
+        'POST',
+        'GET',
+        'PATCH',
+        'GET',
+        'DELETE',
+      ]);
     });
 
     test(
@@ -295,8 +302,22 @@ void main() {
             data: Matchers.any,
           );
         await GroupsRepository(api).addMembers(1, [6, 3]);
-        final body = sent.last.data as Map;
+        final body = sent.firstWhere((o) => o.method == 'POST').data as Map;
         expect((body['group'] as Map)['user_ids'], [2, 3, 4, 5, 6]);
+      },
+    );
+
+    test(
+      'create re-reads the group, because the response has no included',
+      () async {
+        final bare = Map<String, dynamic>.from(fixture('group.json') as Map)
+          ..remove('included');
+        adapter
+          ..onPost('/groups', (s) => s.reply(201, bare), data: Matchers.any)
+          ..onGet('/groups/1', (s) => s.reply(200, fixture('group.json')));
+        final group = await GroupsRepository(api).create('Trip', null);
+        expect(group.members, hasLength(4));
+        expect(sent.map((o) => o.method), ['POST', 'GET']);
       },
     );
 
