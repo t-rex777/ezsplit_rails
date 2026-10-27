@@ -250,6 +250,21 @@ void main() {
       ]);
     });
 
+    test('percentage always has 2 decimals and no float noise', () {
+      final e =
+          make(SplitType.percentage, [
+                const MapEntry(1, 50),
+                const MapEntry(2, 0.1 + 0.2),
+                const MapEntry(3, 49.7),
+              ], 10000).toJson()['expense']
+              as Map<String, dynamic>;
+      expect((e['distribution'] as List).map((d) => (d as Map)['amount']), [
+        '50.00',
+        '0.30',
+        '49.70',
+      ]);
+    });
+
     test('exact sends paise as API strings', () {
       final e =
           make(SplitType.exact, [

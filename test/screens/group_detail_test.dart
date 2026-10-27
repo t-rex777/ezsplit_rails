@@ -7,6 +7,7 @@ import 'package:ezsplit_mobile/data/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ezsplit_mobile/state/group_detail.dart';
 
@@ -223,16 +224,23 @@ void main() {
       await open(tester, Setup());
       await tester.tap(find.text('Dinner'));
       await tester.pumpAndSettle();
-      expect(find.text('Expense 1'), findsOneWidget);
+      expect(find.text('Expense detail'), findsOneWidget);
+      expect(find.text('Riya paid ₹1,000'), findsOneWidget);
     });
 
     testWidgets('the floating button adds an expense in this group', (
       tester,
     ) async {
-      await open(tester, Setup());
+      SharedPreferences.setMockInitialValues({});
+      final c = await open(tester, Setup());
       await tester.tap(find.bySemanticsLabel('Add expense'));
       await tester.pumpAndSettle();
       expect(find.text('Add expense'), findsOneWidget);
+      expect(find.text('all 4 members'), findsOneWidget);
+      expect(
+        routerOf(c).routerDelegate.currentConfiguration.last.matchedLocation,
+        '/groups/1/expenses/new',
+      );
     });
   });
 

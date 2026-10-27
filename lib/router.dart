@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'screens/auth/accept_invite_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/expense/expense_detail_screen.dart';
+import 'screens/expense/expense_form_screen.dart';
 import 'screens/group_detail/group_detail_screen.dart';
 import 'screens/groups/group_settings_screen.dart';
 import 'screens/groups/groups_screen.dart';
@@ -58,6 +60,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           email: state.uri.queryParameters['email'] ?? '',
         ),
       ),
+      // Outside the tab shell, so the tab bar hides behind them.
+      GoRoute(
+        path: '/expenses/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, state) => ExpenseDetailScreen(
+          expenseId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+        routes: [
+          GoRoute(
+            path: 'edit',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (_, state) => EditExpenseScreen(
+              expenseId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(navigationShell: shell),
         branches: [
@@ -100,23 +119,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                       GoRoute(
                         path: 'expenses/new',
-                        builder: (_, _) =>
-                            const PlaceholderScreen(title: 'Add expense'),
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (_, state) => ExpenseFormScreen(
+                          groupId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
+                              0,
+                        ),
                       ),
                     ],
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: '/expenses/:id',
-                builder: (_, state) => PlaceholderScreen(
-                  title: 'Expense ${state.pathParameters['id']}',
-                ),
-                routes: [
-                  GoRoute(
-                    path: 'edit',
-                    builder: (_, _) =>
-                        const PlaceholderScreen(title: 'Edit expense'),
                   ),
                 ],
               ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/balances_repository.dart';
 import 'package:ezsplit_mobile/data/categories_repository.dart';
 import 'package:ezsplit_mobile/data/expenses_repository.dart';
@@ -178,18 +179,23 @@ Expense makeExpense(
   int mine = -20000,
   DateTime? date,
   Category category = foodCategory,
+  SplitType splitType = SplitType.equal,
+  List<Share> shares = const [],
+  int? creatorId,
+  String? notes,
 }) => Expense(
   id: id,
   name: name,
   paise: paise,
   currency: 'INR',
-  splitType: SplitType.equal,
+  splitType: splitType,
   date: date ?? DateTime(2026, 10, 24),
   payer: payer,
   category: category,
-  shares: const [],
-  creatorId: payer.id,
+  shares: shares,
+  creatorId: creatorId ?? payer.id,
   myAmountPaise: mine,
+  notes: notes,
   groupId: 1,
 );
 
@@ -221,6 +227,47 @@ class FakeExpensesRepository extends ExpensesRepository {
   Object? error;
   Completer<void>? gate;
   final List<ExpenseQuery> queries = [];
+
+  /// Expenses `get` can return, by id. Falls back to [expenses].
+  final Map<int, Expense> details = {};
+  Object? saveError;
+  Object? deleteError;
+  Completer<void>? saveGate;
+  final List<NewExpense> created = [];
+  final List<({int id, NewExpense expense})> updated = [];
+  final List<int> deleted = [];
+
+  @override
+  Future<Expense> get(int id) async {
+    final e = details[id] ?? expenses.where((x) => x.id == id).firstOrNull;
+    if (e == null) {
+      throw const ApiError(status: 404, message: 'Expense not found');
+    }
+    return e;
+  }
+
+  @override
+  Future<Expense> create(NewExpense expense) async {
+    created.add(expense);
+    await saveGate?.future;
+    if (saveError != null) throw saveError!;
+    return makeExpense(900, expense.name, paise: expense.paise);
+  }
+
+  @override
+  Future<Expense> update(int id, NewExpense expense) async {
+    updated.add((id: id, expense: expense));
+    await saveGate?.future;
+    if (saveError != null) throw saveError!;
+    return makeExpense(id, expense.name, paise: expense.paise);
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    deleted.add(id);
+    await saveGate?.future;
+    if (deleteError != null) throw deleteError!;
+  }
 
   @override
   Future<Page<Expense>> list(ExpenseQuery query) async {

@@ -475,8 +475,8 @@ class NewExpense {
   final String? notes;
 
   /// Per person, in the order they appear on the split. The value means:
-  /// equal: ignored (only the user ids matter); percentage: the percent;
-  /// exact: the person's amount in paise.
+  /// equal: ignored (only the user ids matter); percentage: the percent, sent
+  /// with 2 decimals; exact: the person's whole amount in paise.
   final List<MapEntry<int, num>> distribution;
 
   Map<String, dynamic> toJson() => {
@@ -506,15 +506,21 @@ class NewExpense {
         ];
       case SplitType.percentage:
         return [
-          for (final e in distribution) MapEntry(e.key, e.value.toString()),
+          for (final e in distribution) MapEntry(e.key, _percentToApi(e.value)),
         ];
       case SplitType.exact:
         return [
           for (final e in distribution)
-            MapEntry(e.key, paiseToApi(e.value.toInt())),
+            MapEntry(e.key, paiseToApi(e.value.round())),
         ];
     }
   }
+}
+
+/// "33.33", never "33.33000000000001": goes through whole hundredths.
+String _percentToApi(num percent) {
+  final hundredths = (percent * 100).round();
+  return '${hundredths ~/ 100}.${(hundredths % 100).toString().padLeft(2, '0')}';
 }
 
 String isoDate(DateTime d) =>
