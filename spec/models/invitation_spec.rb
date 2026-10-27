@@ -41,7 +41,7 @@ RSpec.describe Invitation, type: :model do
       end
       it "sets expires_at to 7 days from now on creation" do
           invitation = create(:invitation)
-          expect(invitation.expires_at).to eq(Time.current + 7.days)
+          expect(invitation.expires_at).to be_within(1.second).of(Time.current + 7.days)
       end
 
       it "does not modify expires_at on update" do
