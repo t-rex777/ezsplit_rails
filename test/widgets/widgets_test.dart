@@ -257,4 +257,22 @@ void main() {
     expect(data.flagsCollection.isEnabled, ui.Tristate.isFalse);
     handle.dispose();
   });
+
+  testWidgets('enabled labelled BrutalButton is tappable via semantics', (
+    t,
+  ) async {
+    final handle = t.ensureSemantics();
+    var taps = 0;
+    await t.pumpWidget(
+      host(BrutalButton(label: 'Save', onPressed: () => taps++)),
+    );
+    final data = t.getSemantics(find.byType(BrutalButton)).getSemanticsData();
+    expect(data.label, 'Save');
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.hasAction(ui.SemanticsAction.tap), isTrue);
+    t.semantics.tap(find.semantics.byLabel('Save'));
+    await t.pump();
+    expect(taps, 1);
+    handle.dispose();
+  });
 }

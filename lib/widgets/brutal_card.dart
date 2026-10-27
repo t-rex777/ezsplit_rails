@@ -115,6 +115,9 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
 
     return Semantics(
       button: widget.isButton,
+      enabled: true,
+      focusable: true,
+      onTap: widget.onTap,
       excludeSemantics: widget.semanticLabel != null,
       label: widget.semanticLabel,
       child: FocusableActionDetector(
