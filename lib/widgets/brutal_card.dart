@@ -79,7 +79,16 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
       child: widget.child,
     );
 
-    if (!_interactive) return surface;
+    if (!_interactive) {
+      if (!widget.isButton) return surface;
+      return Semantics(
+        button: true,
+        enabled: false,
+        excludeSemantics: widget.semanticLabel != null,
+        label: widget.semanticLabel,
+        child: surface,
+      );
+    }
 
     // 2px ink outline with a 2px gap, drawn outside the surface.
     surface = Stack(
@@ -106,6 +115,7 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
 
     return Semantics(
       button: widget.isButton,
+      excludeSemantics: widget.semanticLabel != null,
       label: widget.semanticLabel,
       child: FocusableActionDetector(
         onShowFocusHighlight: (v) => setState(() => _focused = v),

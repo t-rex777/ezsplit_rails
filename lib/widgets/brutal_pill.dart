@@ -16,7 +16,7 @@ class BrutalPill extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  /// Fill used when selected. Defaults to amber.
+  /// Fill used when selected. Defaults to ink, with bg text.
   final Color? color;
 
   @override
@@ -25,7 +25,7 @@ class BrutalPill extends StatelessWidget {
     return Semantics(
       selected: selected,
       child: BrutalSurface(
-        color: selected ? (color ?? c.amber) : c.card,
+        color: selected ? (color ?? c.ink) : c.card,
         borderWidth: kPillBorder,
         radius: 999,
         shadowOffset: 2,
@@ -44,7 +44,7 @@ class BrutalPill extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: selected ? const Color(0xFF111111) : c.ink,
+              color: !selected ? c.ink : (color == null ? c.bg : onAccent),
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             ),
           ),

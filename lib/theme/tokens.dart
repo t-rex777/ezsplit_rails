@@ -8,6 +8,9 @@ const double kSheetRadius = 22;
 const double kShadowOffset = 4;
 const double kMinTap = 44;
 
+/// Text and icons on coloured fills (accents and disabled grey), both modes.
+const Color onAccent = Color(0xFF111111);
+
 class EzColors extends ThemeExtension<EzColors> {
   const EzColors({
     required this.bg,

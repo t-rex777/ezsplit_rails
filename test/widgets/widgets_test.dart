@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:ezsplit_mobile/theme/app_theme.dart';
 import 'package:ezsplit_mobile/theme/tokens.dart';
 import 'package:ezsplit_mobile/widgets/avatar.dart';
@@ -223,5 +225,36 @@ void main() {
     expect(find.text('MS'), findsOneWidget);
     expect(find.text('Activity'), findsOneWidget);
     expect(find.text('Coming soon'), findsOneWidget);
+  });
+
+  for (final b in Brightness.values) {
+    testWidgets('selected pill defaults to ink fill and bg text ($b)', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        host(const BrutalPill(label: 'Food', selected: true), b: b),
+      );
+      final c = b == Brightness.light ? EzColors.light : EzColors.dark;
+      final deco =
+          t
+                  .widget<AnimatedContainer>(find.byType(AnimatedContainer))
+                  .decoration!
+              as BoxDecoration;
+      expect(deco.color, c.ink);
+      expect(t.widget<Text>(find.text('Food')).style!.color, c.bg);
+    });
+  }
+
+  testWidgets('disabled BrutalButton keeps button role, not enabled', (
+    t,
+  ) async {
+    final handle = t.ensureSemantics();
+    await t.pumpWidget(host(const BrutalButton(label: 'Save')));
+    final node = t.getSemantics(find.byType(BrutalButton));
+    final data = node.getSemanticsData();
+    expect(data.label, 'Save');
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(data.flagsCollection.isEnabled, ui.Tristate.isFalse);
+    handle.dispose();
   });
 }

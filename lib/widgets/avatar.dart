@@ -25,7 +25,7 @@ class Avatar extends StatelessWidget {
         initials,
         maxLines: 1,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: const Color(0xFF111111),
+          color: onAccent,
           fontWeight: FontWeight.w700,
           fontSize: size * 0.38,
         ),

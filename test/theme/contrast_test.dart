@@ -47,4 +47,24 @@ void main() {
       greaterThanOrEqualTo(4.5),
     );
   });
+
+  test('onAccent has 4.5:1 on every accent fill and the disabled grey', () {
+    final fills = [
+      for (final c in [EzColors.light, EzColors.dark]) ...[
+        c.amber,
+        c.green,
+        c.peach,
+        c.mint,
+        c.lilac,
+      ],
+      EzColors.disabled,
+    ];
+    for (final fill in fills) {
+      expect(
+        contrast(onAccent, fill),
+        greaterThanOrEqualTo(4.5),
+        reason: '$fill',
+      );
+    }
+  });
 }

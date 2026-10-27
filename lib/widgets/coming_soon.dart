@@ -36,7 +36,7 @@ class ComingSoon extends StatelessWidget {
                   borderRadius: BorderRadius.circular(kCardRadius),
                   border: Border.all(color: context.ez.ink, width: kCardBorder),
                 ),
-                child: Icon(icon, size: 32, color: const Color(0xFF111111)),
+                child: Icon(icon, size: 32, color: onAccent),
               ),
               const SizedBox(height: 16),
               Text(
@@ -47,7 +47,11 @@ class ComingSoon extends StatelessWidget {
               const SizedBox(height: 8),
               Text(body, textAlign: TextAlign.center, style: text.bodyMedium),
               const SizedBox(height: 16),
-              const BrutalPill(label: 'Coming soon', selected: true),
+              BrutalPill(
+                label: 'Coming soon',
+                selected: true,
+                color: context.ez.amber,
+              ),
             ],
           ),
         ),

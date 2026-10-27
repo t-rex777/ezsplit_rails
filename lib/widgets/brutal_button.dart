@@ -23,7 +23,7 @@ class BrutalButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ez;
     final enabled = onPressed != null;
-    final textColor = _onFill;
+    const textColor = onAccent;
     return BrutalSurface(
       color: enabled ? (color ?? c.amber) : EzColors.disabled,
       borderWidth: kCardBorder,
@@ -58,7 +58,4 @@ class BrutalButton extends StatelessWidget {
       ),
     );
   }
-
-  // Fills are mid-tone accents in both modes, so text stays near-black.
-  static const _onFill = Color(0xFF111111);
 }
