@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../data/api_error.dart';
 import '../../domain/money.dart';
 import '../../state/group_detail.dart';
 import '../../state/groups.dart';
@@ -10,6 +11,7 @@ import '../../state/session.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/brutal_card.dart';
 import '../../widgets/brutal_pill.dart';
+import '../groups/group_widgets.dart' show RetryMessage;
 import 'balances_view.dart';
 import 'expenses_view.dart';
 import 'totals_view.dart';
@@ -31,7 +33,8 @@ enum GroupView {
 class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId, this.view});
 
-  final int groupId;
+  /// Null when the id in the link is not a number.
+  final int? groupId;
 
   /// The `view` query value; anything unknown opens Expenses.
   final String? view;
@@ -44,7 +47,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   // Kept here so the search and filters survive a trip to another view.
   ExpenseFilters _filters = const ExpenseFilters();
 
-  int get _id => widget.groupId;
+  int get _id => widget.groupId!;
 
   void _back() {
     if (context.canPop()) {
@@ -56,8 +59,21 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.groupId == null) {
+      return _NotFound(message: 'Group not found', onBack: _back);
+    }
     final view = GroupView.fromQuery(widget.view);
     final group = ref.watch(groupProvider(_id));
+    if (group.hasError && !group.hasValue) {
+      final error = group.error;
+      return _NotFound(
+        message: error is ApiError && error.status == null
+            ? error.message
+            : 'Group not found',
+        onBack: _back,
+        onRetry: () => ref.invalidate(groupProvider(_id)),
+      );
+    }
     final text = Theme.of(context).textTheme;
     return Scaffold(
       floatingActionButton: view == GroupView.expenses
@@ -122,6 +138,45 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   GroupView.balances => BalancesView(groupId: _id),
                   GroupView.totals => TotalsView(groupId: _id),
                 },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotFound extends StatelessWidget {
+  const _NotFound({required this.message, required this.onBack, this.onRetry});
+
+  final String message;
+  final VoidCallback onBack;
+
+  /// Null when retrying cannot help, as with a link that is not a number.
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _IconButton(
+                  icon: Symbols.arrow_back,
+                  label: 'Back',
+                  onTap: onBack,
+                ),
+              ),
+              Expanded(
+                child: onRetry == null
+                    ? Center(child: Text(message, textAlign: TextAlign.center))
+                    : RetryMessage(message: message, onRetry: onRetry!),
               ),
             ],
           ),

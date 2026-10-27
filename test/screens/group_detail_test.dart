@@ -9,7 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ezsplit_mobile/screens/group_detail/balances_view.dart';
 import 'package:ezsplit_mobile/state/group_detail.dart';
+import 'package:ezsplit_mobile/theme/app_theme.dart';
+import 'package:ezsplit_mobile/widgets/brutal_card.dart';
 import 'package:ezsplit_mobile/state/summary.dart';
 
 import '../support/fakes.dart';
@@ -75,6 +78,41 @@ void main() {
     testWidgets('view query opens the Balances view', (tester) async {
       await open(tester, Setup(), path: '/groups/1?view=balances');
       expect(find.text('Simplest way to settle'), findsOneWidget);
+    });
+  });
+
+  group('Group not found', () {
+    testWidgets('a group that fails to load says so, with retry and no Add', (
+      tester,
+    ) async {
+      final s = Setup()..groups.groups = [];
+      await open(tester, s, path: '/groups/9');
+      expect(find.text('Group not found'), findsOneWidget);
+      expect(find.byTooltip('Add expense'), findsNothing);
+      expect(find.bySemanticsLabel('Add expense'), findsNothing);
+      expect(find.text('Dinner'), findsNothing);
+      final gets = s.groups.gets;
+
+      s.groups.groups = [
+        makeGroup(9, 'Late group', members: const [milisha]),
+      ];
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(s.groups.gets, greaterThan(gets));
+      expect(find.text('Group not found'), findsNothing);
+      expect(find.text('Late group'), findsOneWidget);
+    });
+
+    testWidgets('a non-numeric id is not found and makes no request', (
+      tester,
+    ) async {
+      final s = Setup();
+      await open(tester, s, path: '/groups/abc');
+      expect(find.text('Group not found'), findsOneWidget);
+      expect(s.groups.gets, 0);
+      expect(s.expenses.queries, isEmpty);
+      expect(s.balances.calls, 0);
+      expect(find.text('Try again'), findsNothing);
     });
   });
 
@@ -468,6 +506,42 @@ void main() {
       );
       expect(find.text("Everyone's settled up"), findsOneWidget);
       expect(find.text('Settle up'), findsNothing);
+    });
+
+    testWidgets('after a full settle-up the members show as settled up', (
+      tester,
+    ) async {
+      await open(tester, Setup(balances: []), path: '/groups/1?view=balances');
+      expect(find.text("Everyone's settled up"), findsOneWidget);
+      expect(find.text('Riya'), findsOneWidget);
+      expect(find.text('Neha'), findsOneWidget);
+      expect(find.text('You'), findsOneWidget);
+      expect(find.text('Settle up'), findsNothing);
+    });
+
+    testWidgets('no rows and no group shows only the settled state', (
+      tester,
+    ) async {
+      final s = Setup(balances: [])..groups.groups = [];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...overridesFor(FakeAuthRepository(current: milisha)),
+            ...detailOverrides(
+              groups: s.groups,
+              expenses: s.expenses,
+              balances: s.balances,
+            ),
+          ],
+          child: MaterialApp(
+            theme: buildTheme(Brightness.light),
+            home: const Scaffold(body: BalancesView(groupId: 1)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text("Everyone's settled up"), findsOneWidget);
+      expect(find.byType(BrutalCard), findsNothing);
     });
 
     testWidgets('pull to refresh reloads the balances', (tester) async {

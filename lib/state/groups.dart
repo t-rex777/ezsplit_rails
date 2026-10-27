@@ -10,6 +10,7 @@ final groupsProvider = FutureProvider.autoDispose<List<Group>>(
 
 final groupProvider = FutureProvider.autoDispose.family<Group, int>(
   (ref, id) => ref.watch(groupsRepositoryProvider).get(id),
+  retry: (_, _) => null,
 );
 
 final friendsProvider = FutureProvider.autoDispose<List<User>>(

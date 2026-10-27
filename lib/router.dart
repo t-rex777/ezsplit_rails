@@ -108,8 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: ':id',
                     builder: (_, state) => GroupDetailScreen(
-                      groupId:
-                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                      groupId: int.tryParse(state.pathParameters['id'] ?? ''),
                       view: state.uri.queryParameters['view'],
                     ),
                     routes: [

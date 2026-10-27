@@ -6,6 +6,7 @@ import '../../data/models.dart';
 import '../../domain/money.dart';
 import '../../domain/settle_plan.dart';
 import '../../state/group_detail.dart';
+import '../../state/groups.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/avatar.dart';
@@ -33,6 +34,7 @@ class BalancesView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final balances = ref.watch(groupBalancesProvider(groupId));
     final me = ref.watch(sessionProvider).value;
+    final members = ref.watch(groupProvider(groupId)).value?.members;
     return balances.when(
       skipLoadingOnReload: true,
       loading: () =>
@@ -43,7 +45,23 @@ class BalancesView extends ConsumerWidget {
       ),
       data: (rows) => RefreshIndicator(
         onRefresh: () => _refresh(ref),
-        child: _Body(groupId: groupId, rows: rows, meId: me?.id),
+        child: _Body(
+          groupId: groupId,
+          // The server sends no rows once everyone has settled up.
+          rows: rows.isEmpty && members != null
+              ? [
+                  for (final u in members)
+                    BalanceRow(
+                      userId: u.id,
+                      firstName: u.firstName,
+                      lastName: u.lastName,
+                      currency: 'INR',
+                      paise: 0,
+                    ),
+                ]
+              : rows,
+          meId: me?.id,
+        ),
       ),
     );
   }
@@ -80,21 +98,22 @@ class _Body extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 24, right: 4),
       children: [
-        BrutalCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: Column(
-            children: [
-              for (final r in rows)
-                _MemberRow(
-                  row: r,
-                  name: names[r.userId]!,
-                  isMe: r.userId == meId,
-                ),
-            ],
+        if (rows.isNotEmpty)
+          BrutalCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            child: Column(
+              children: [
+                for (final r in rows)
+                  _MemberRow(
+                    row: r,
+                    name: names[r.userId]!,
+                    isMe: r.userId == meId,
+                  ),
+              ],
+            ),
           ),
-        ),
         if (plan != null) ...[
-          const SizedBox(height: 20),
+          if (rows.isNotEmpty) const SizedBox(height: 20),
           if (plan.isEmpty)
             Text(
               "Everyone's settled up",
