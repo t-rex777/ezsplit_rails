@@ -1,17 +1,93 @@
-# ezsplit_mobile
+# ezsplit mobile
 
-A new Flutter project.
+ezsplit is a Splitwise-style app for splitting expenses with friends. This is the Flutter client. It talks to the ezsplit Rails JSON API and keeps its session in a cookie. You join by invite link, create groups, add expenses (equal, percentage or exact splits), see balances, and settle up.
 
-## Getting Started
+## Prerequisites
 
-This project is a starting point for a Flutter application.
+- Flutter 3.x with Dart ^3.13 (`flutter --version`).
+- For iOS: Xcode with an iOS simulator.
+- For Android: Android Studio with an emulator.
+- The ezsplit Rails backend, on the `feat/mobile-api` branch, running locally.
 
-A few resources to get you started if this is your first Flutter project:
+## Run the Rails backend
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+From the Rails repo, on the `feat/mobile-api` branch:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+mise exec ruby@3.2.2 -- bin/rails runner <path>/demo_seed.rb   # demo data
+mise exec ruby@3.2.2 -- bin/rails server -p 3100
+```
+
+The demo login is `milisha.demo@example.com` / `password123`. Friends are Riya, Arjun and Neha. There is a pending invite for `sam.demo@example.com`. How the demo data is made is described in `work/analysis/2026-10-27-ezsplit-mobile-api-fixtures/README.md`.
+
+## Run the app
+
+The API address is set with `--dart-define=API_BASE_URL=...`. The default is `http://localhost:3100`.
+
+iOS simulator:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:3100
+```
+
+Android emulator (it reaches the host machine at `10.0.2.2`):
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3100
+```
+
+## Open an invite link
+
+Invite links use the `ezsplit://register` scheme. Replace the token and email with a real invite.
+
+iOS simulator:
+
+```bash
+xcrun simctl openurl booted "ezsplit://register?token=TOKEN&email_address=sam.demo@example.com"
+```
+
+Android emulator:
+
+```bash
+adb shell am start -a android.intent.action.VIEW -d "ezsplit://register?token=TOKEN&email_address=sam.demo@example.com"
+```
+
+## Run the tests
+
+Unit and widget tests. These need no server:
+
+```bash
+flutter analyze
+flutter test
+```
+
+## Live API test
+
+`test/live/live_api_test.dart` uses the real client and repositories against a running server with the demo data. A plain `flutter test` skips it.
+
+```bash
+flutter test test/live --run-skipped -t live
+```
+
+Optional flags:
+
+- `--dart-define=API_BASE_URL=http://host:port` to use another server.
+- `--dart-define=INVITE_TOKEN=...` to also test invite acceptance for `sam.demo@example.com`. An invite token works once, so that test is skipped without it.
+
+The test creates a group named "Live test <timestamp>". The server does not allow deleting a group that has settlements, and the API cannot delete settlements. So each run leaves one settled group behind. Reset the demo data by running the seed again.
+
+## Manual walkthrough
+
+Not yet verified on a device. This Mac has no iOS simulator or Android emulator, so only the live API test has run.
+
+- [ ] 1. Log in.
+- [ ] 2. Create a group with one friend.
+- [ ] 3. Add an expense of ₹3,000 split by percentage.
+- [ ] 4. Check Balances.
+- [ ] 5. Settle up.
+- [ ] 6. Check that the balance reaches 0.
+- [ ] 7. Switch to dark mode.
+- [ ] 8. Log out.
+- [ ] 9. Open an invite link and join.
+
+Compare each screen with the design canvas.
