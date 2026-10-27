@@ -4,21 +4,23 @@ ezsplit is a Splitwise-style app for splitting expenses with friends. This is th
 
 ## Prerequisites
 
-- Flutter 3.x with Dart ^3.13 (`flutter --version`).
+- Flutter 3.x with Dart ^3.13.5 (`flutter --version`).
 - For iOS: Xcode with an iOS simulator.
 - For Android: Android Studio with an emulator.
 - The ezsplit Rails backend, on the `feat/mobile-api` branch, running locally.
 
 ## Run the Rails backend
 
-From the Rails repo, on the `feat/mobile-api` branch:
+The demo seed script is not in this repo. It lives in the project's work folder, outside both repos, at `~/Documents/Cobol/work/analysis/2026-10-27-ezsplit-mobile-api-fixtures/demo_seed.rb`. It only runs in the development environment.
+
+From the root of the Rails backend folder (the checkout that has the mobile API):
 
 ```bash
-mise exec ruby@3.2.2 -- bin/rails runner <path>/demo_seed.rb   # demo data
+mise exec ruby@3.2.2 -- bin/rails runner ~/Documents/Cobol/work/analysis/2026-10-27-ezsplit-mobile-api-fixtures/demo_seed.rb   # demo data
 mise exec ruby@3.2.2 -- bin/rails server -p 3100
 ```
 
-The demo login is `milisha.demo@example.com` / `password123`. Friends are Riya, Arjun and Neha. There is a pending invite for `sam.demo@example.com`. How the demo data is made is described in `work/analysis/2026-10-27-ezsplit-mobile-api-fixtures/README.md`.
+The demo login is `milisha.demo@example.com` / `password123`. Friends are Riya, Arjun and Neha. There is a pending invite for `sam.demo@example.com`. How the demo data is made is described in `README.md` beside the seed script, in the same work folder.
 
 ## Run the app
 
