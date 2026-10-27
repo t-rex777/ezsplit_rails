@@ -97,7 +97,7 @@ void main() {
           groupId: groupId,
           categoryId: categories.first.id,
           splitType: SplitType.percentage,
-          distribution: [MapEntry(user.id, 60), MapEntry(riya.id, 40)],
+          distribution: [MapEntry(user.id, 6000), MapEntry(riya.id, 4000)],
         ),
       );
       final reloaded = await me.expenses.get(expense.id);

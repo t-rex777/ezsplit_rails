@@ -171,9 +171,9 @@ class ExpenseFormState {
       notes: notes.isEmpty ? null : notes,
       distribution: [
         for (final id in included)
-          MapEntry<int, num>(id, switch (mode) {
+          MapEntry<int, int>(id, switch (mode) {
             SplitMode.equal => 1,
-            SplitMode.percent => (percents[id] ?? 0) / 100,
+            SplitMode.percent => percents[id] ?? 0,
             SplitMode.exact => exact[id] ?? 0,
           }),
       ],

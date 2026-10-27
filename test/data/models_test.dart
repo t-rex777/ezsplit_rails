@@ -198,7 +198,7 @@ void main() {
   });
 
   group('NewExpense.toJson', () {
-    NewExpense make(SplitType type, List<MapEntry<int, num>> dist, int paise) =>
+    NewExpense make(SplitType type, List<MapEntry<int, int>> dist, int paise) =>
         NewExpense(
           name: 'Dinner',
           paise: paise,
@@ -237,9 +237,9 @@ void main() {
     test('percentage sends the percents', () {
       final e =
           make(SplitType.percentage, [
-                const MapEntry(1, 33.33),
-                const MapEntry(2, 33.33),
-                const MapEntry(3, 33.34),
+                const MapEntry(1, 3333),
+                const MapEntry(2, 3333),
+                const MapEntry(3, 3334),
               ], 10000).toJson()['expense']
               as Map<String, dynamic>;
       expect(e['split_type'], 'percentage');
@@ -250,12 +250,12 @@ void main() {
       ]);
     });
 
-    test('percentage always has 2 decimals and no float noise', () {
+    test('percentage formats whole hundredths with 2 decimals', () {
       final e =
           make(SplitType.percentage, [
-                const MapEntry(1, 50),
-                const MapEntry(2, 0.1 + 0.2),
-                const MapEntry(3, 49.7),
+                const MapEntry(1, 5000),
+                const MapEntry(2, 30),
+                const MapEntry(3, 4970),
               ], 10000).toJson()['expense']
               as Map<String, dynamic>;
       expect((e['distribution'] as List).map((d) => (d as Map)['amount']), [

@@ -129,9 +129,9 @@ void main() {
           splitType: SplitType.percentage,
           notes: 'Morning',
           distribution: const [
-            MapEntry(2, 33.33),
-            MapEntry(3, 33.33),
-            MapEntry(4, 33.34),
+            MapEntry(2, 3333),
+            MapEntry(3, 3333),
+            MapEntry(4, 3334),
           ],
         ),
       );
