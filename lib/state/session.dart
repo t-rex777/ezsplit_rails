@@ -72,6 +72,12 @@ class SessionNotifier extends AsyncNotifier<User?> {
     state = AsyncData(user);
   }
 
+  /// Replaces the signed-in user, for example after editing their details.
+  void setUser(User user) {
+    if (state.value == null) return;
+    state = AsyncData(user);
+  }
+
   Future<void> logout() async {
     try {
       await ref.read(authRepositoryProvider).logout();

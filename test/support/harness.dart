@@ -49,8 +49,14 @@ class FakeAuthRepository implements AuthRepository {
     return current = testUser;
   }
 
+  int logouts = 0;
+  Completer<void>? logoutGate;
+
   @override
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    logouts++;
+    await logoutGate?.future;
+  }
 
   @override
   Future<User> acceptInvite({

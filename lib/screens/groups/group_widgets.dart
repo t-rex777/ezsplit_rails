@@ -14,6 +14,8 @@ import '../../widgets/brutal_input.dart';
 import '../../widgets/brutal_sheet.dart';
 import '../../widgets/category_icon.dart';
 
+export '../../widgets/confirm_sheet.dart';
+
 /// How a person is shown: first name, or the start of their email.
 String userName(User u) =>
     u.firstName.isNotEmpty ? u.firstName : u.email.split('@').first;
@@ -116,41 +118,6 @@ class GroupIconPicker extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Asks before a destructive action. Returns true when confirmed.
-Future<bool> confirmSheet(
-  BuildContext context, {
-  required String title,
-  required String body,
-  required String confirmLabel,
-  bool destructive = false,
-}) async {
-  final result = await showBrutalSheet<bool>(
-    context,
-    title: title,
-    child: Builder(
-      builder: (ctx) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(body, style: Theme.of(ctx).textTheme.bodyLarge),
-          const SizedBox(height: 20),
-          BrutalButton(
-            label: confirmLabel,
-            color: destructive ? ctx.ez.peach : ctx.ez.amber,
-            onPressed: () => Navigator.of(ctx).pop(true),
-          ),
-          const SizedBox(height: 12),
-          BrutalButton(
-            label: 'Cancel',
-            color: ctx.ez.card,
-            onPressed: () => Navigator.of(ctx).pop(false),
-          ),
-        ],
-      ),
-    ),
-  );
-  return result ?? false;
 }
 
 /// Sends a friend invite. Returns the toast to show, or null if dismissed.

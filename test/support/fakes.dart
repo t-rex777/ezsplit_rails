@@ -135,6 +135,35 @@ class FakeUsersRepository extends UsersRepository {
   @override
   Future<List<User>> friends() async => friendList;
 
+  Object? updateError;
+  Completer<void>? updateGate;
+  final List<Map<String, Object?>> updates = [];
+
+  @override
+  Future<User> updateMe({
+    String? firstName,
+    String? lastName,
+    String? phone,
+    DateTime? dob,
+  }) async {
+    updates.add({
+      'firstName': firstName,
+      'lastName': lastName,
+      'phone': phone,
+      'dob': dob,
+    });
+    await updateGate?.future;
+    if (updateError != null) throw updateError!;
+    return User(
+      id: 1,
+      firstName: firstName ?? '',
+      lastName: lastName ?? '',
+      email: 'neha@gmail.com',
+      phone: phone,
+      dob: dob,
+    );
+  }
+
   @override
   Future<String> invite(String email) async {
     invited.add(email);
@@ -343,9 +372,64 @@ class FakeCategoriesRepository extends CategoriesRepository {
   ]) : super(dummyClient());
 
   List<Category> categories;
+  Object? listError;
+  Object? writeError;
+  Completer<void>? writeGate;
+  final List<String> calls = [];
+  final List<Map<String, Object?>> written = [];
 
   @override
-  Future<List<Category>> list() async => categories;
+  Future<List<Category>> list() async {
+    calls.add('list');
+    if (listError != null) throw listError!;
+    return categories;
+  }
+
+  Future<void> _write(String call, Map<String, Object?> args) async {
+    calls.add(call);
+    written.add(args);
+    await writeGate?.future;
+    if (writeError != null) throw writeError!;
+  }
+
+  @override
+  Future<Category> create({
+    required String name,
+    required String icon,
+    required String color,
+  }) async {
+    await _write('create', {'name': name, 'icon': icon, 'color': color});
+    final made = Category(id: 99, name: name, icon: icon, color: color);
+    categories = [...categories, made];
+    return made;
+  }
+
+  @override
+  Future<Category> update(
+    int id, {
+    String? name,
+    String? icon,
+    String? color,
+  }) async {
+    await _write('update', {
+      'id': id,
+      'name': name,
+      'icon': icon,
+      'color': color,
+    });
+    final next = Category(id: id, name: name!, icon: icon!, color: color!);
+    categories = [for (final c in categories) c.id == id ? next : c];
+    return next;
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    await _write('delete', {'id': id});
+    categories = [
+      for (final c in categories)
+        if (c.id != id) c,
+    ];
+  }
 }
 
 List<Override> detailOverrides({

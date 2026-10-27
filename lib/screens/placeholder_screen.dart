@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
-
-import '../theme/tokens.dart';
-import '../widgets/coming_soon.dart';
 
 /// Stands in for screens that later tasks build.
 class PlaceholderScreen extends StatelessWidget {
@@ -29,24 +25,6 @@ class PlaceholderScreen extends StatelessWidget {
               if (detail != null) Text(detail!, style: text.bodyMedium),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class ActivityPlaceholder extends StatelessWidget {
-  const ActivityPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: ComingSoon(
-          title: 'Activity',
-          body: 'A feed of what changed in your groups.',
-          icon: Symbols.history,
-          tile: context.ez.lilac,
         ),
       ),
     );

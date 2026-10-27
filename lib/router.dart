@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'screens/auth/accept_invite_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/activity_screen.dart';
 import 'screens/expense/expense_detail_screen.dart';
 import 'screens/expense/expense_form_screen.dart';
 import 'screens/group_detail/group_detail_screen.dart';
@@ -13,6 +14,9 @@ import 'screens/groups/groups_screen.dart';
 import 'screens/groups/new_group_screen.dart';
 import 'screens/home/dashboard_screen.dart';
 import 'screens/placeholder_screen.dart';
+import 'screens/profile/categories_screen.dart';
+import 'screens/profile/edit_details_screen.dart';
+import 'screens/profile/profile_screen.dart';
 import 'screens/shell.dart';
 import 'state/session.dart';
 
@@ -137,7 +141,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/activity',
-                builder: (_, _) => const ActivityPlaceholder(),
+                builder: (_, _) => const ActivityScreen(),
               ),
             ],
           ),
@@ -145,17 +149,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (_, _) => const PlaceholderScreen(title: 'Profile'),
+                builder: (_, _) => const ProfileScreen(),
                 routes: [
                   GoRoute(
                     path: 'details',
-                    builder: (_, _) =>
-                        const PlaceholderScreen(title: 'Edit details'),
+                    builder: (_, _) => const EditDetailsScreen(),
                   ),
                   GoRoute(
                     path: 'categories',
-                    builder: (_, _) =>
-                        const PlaceholderScreen(title: 'Categories'),
+                    builder: (_, _) => const CategoriesScreen(),
                   ),
                 ],
               ),
