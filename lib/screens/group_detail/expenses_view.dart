@@ -61,13 +61,22 @@ class _ExpensesViewState extends ConsumerState<ExpensesView> {
     });
   }
 
+  /// The filters with the search box exactly as it reads now. Any pending
+  /// debounce is dropped because this applies the text itself.
+  ExpenseFilters _withSearch(ExpenseFilters f) {
+    _debounce?.cancel();
+    return f.copyWith(q: _search.text.trim());
+  }
+
   Future<void> _openFilters() async {
     final picked = await showFilterSheet(
       context,
       groupId: widget.groupId,
-      current: widget.filters,
+      current: _withSearch(widget.filters),
     );
-    if (picked != null && mounted) widget.onFilters(picked);
+    if (!mounted) return;
+    // The sheet never owns the search text, so keep the box's text either way.
+    widget.onFilters(_withSearch(picked ?? widget.filters));
   }
 
   Future<void> _refresh() async {

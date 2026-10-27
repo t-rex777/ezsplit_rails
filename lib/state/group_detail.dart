@@ -133,8 +133,12 @@ class ExpenseListNotifier extends AsyncNotifier<ExpenseListState> {
 
   final ExpenseListKey key;
 
+  // Bumped on every (re)load so a late page for an old list is dropped.
+  int _generation = 0;
+
   @override
   Future<ExpenseListState> build() async {
+    _generation++;
     final page = await ref
         .watch(expensesRepositoryProvider)
         .list(key.$2.toQuery(key.$1));
@@ -143,15 +147,19 @@ class ExpenseListNotifier extends AsyncNotifier<ExpenseListState> {
 
   Future<void> loadMore() async {
     final current = state.value;
-    if (current == null || current.nextPage == null || current.loadingMore) {
+    if (state.isLoading ||
+        current == null ||
+        current.nextPage == null ||
+        current.loadingMore) {
       return;
     }
+    final generation = _generation;
     state = AsyncData(current.copyWith(loadingMore: true, moreFailed: false));
     try {
       final page = await ref
           .read(expensesRepositoryProvider)
           .list(key.$2.toQuery(key.$1, page: current.nextPage));
-      if (!ref.mounted) return;
+      if (!ref.mounted || generation != _generation) return;
       state = AsyncData(
         ExpenseListState(
           items: [...current.items, ...page.items],
@@ -159,7 +167,7 @@ class ExpenseListNotifier extends AsyncNotifier<ExpenseListState> {
         ),
       );
     } catch (_) {
-      if (!ref.mounted) return;
+      if (!ref.mounted || generation != _generation) return;
       state = AsyncData(current.copyWith(loadingMore: false, moreFailed: true));
     }
   }

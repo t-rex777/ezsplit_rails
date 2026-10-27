@@ -6,11 +6,13 @@ Future<T?> showBrutalSheet<T>(
   BuildContext context, {
   required String title,
   required Widget child,
+  bool enableDrag = true,
 }) {
   final c = context.ez;
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
+    enableDrag: enableDrag,
     useSafeArea: true,
     backgroundColor: c.card,
     barrierColor: c.ink.withValues(alpha: 0.6),

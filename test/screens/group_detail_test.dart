@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:ezsplit_mobile/state/group_detail.dart';
+
 import '../support/fakes.dart';
 import '../support/harness.dart';
 
@@ -133,6 +135,66 @@ void main() {
         const Offset(0, -200),
       );
       expect(find.text('Item 6'), findsOneWidget);
+    });
+
+    testWidgets('reaching the bottom twice asks for page 2 once', (
+      tester,
+    ) async {
+      final s = Setup(
+        expenses: [for (var i = 1; i <= 6; i++) makeExpense(i, 'Item $i')],
+        pageSize: 3,
+      );
+      await open(tester, s);
+      final list = find.byType(Scrollable).last;
+      await tester.drag(list, const Offset(0, -2000));
+      await tester.drag(list, const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(s.expenses.queries.where((q) => q.page == 2), hasLength(1));
+      expect(s.expenses.queries.where((q) => (q.page ?? 1) > 2), isEmpty);
+    });
+
+    testWidgets('no next page means no further request', (tester) async {
+      final s = Setup(expenses: [makeExpense(1, 'A'), makeExpense(2, 'B')]);
+      await open(tester, s);
+      await tester.drag(find.byType(Scrollable).last, const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      expect(s.expenses.queries, hasLength(1));
+    });
+
+    testWidgets('changing the search starts again at page 1', (tester) async {
+      final s = Setup(
+        expenses: [for (var i = 1; i <= 6; i++) makeExpense(i, 'Item $i')],
+        pageSize: 3,
+      );
+      await open(tester, s);
+      expect(s.expenses.queries.map((q) => q.page), contains(2));
+      await tester.enterText(find.byType(TextField).first, 'item');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      expect(
+        s.expenses.queries.any((q) => q.q == 'item' && q.page == null),
+        isTrue,
+      );
+    });
+
+    testWidgets('changing a filter starts again at page 1', (tester) async {
+      final s = Setup(
+        expenses: [for (var i = 1; i <= 6; i++) makeExpense(i, 'Item $i')],
+        pageSize: 3,
+      );
+      await open(tester, s);
+      await tester.tap(find.bySemanticsLabel('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Oldest'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Show'));
+      await tester.pumpAndSettle();
+      expect(
+        s.expenses.queries.any(
+          (q) => q.sort == ExpenseSort.oldest && q.page == null,
+        ),
+        isTrue,
+      );
     });
 
     testWidgets('Only unsettled hides expenses where my amount is 0', (
@@ -275,6 +337,55 @@ void main() {
       await tester.tap(find.textContaining('Show'));
       await tester.pumpAndSettle();
       expect(s.expenses.queries.last.categoryIds, [2]);
+    });
+
+    testWidgets('Reset clears filters but keeps the search text', (
+      tester,
+    ) async {
+      final s = Setup();
+      await open(tester, s);
+      await tester.enterText(find.byType(TextField).first, 'din');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Amount high'));
+      await tester.tap(find.text('Reset'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Show'));
+      await tester.pumpAndSettle();
+      expect(s.expenses.queries.last.q, 'din');
+      expect(s.expenses.queries.last.sort, isNull);
+      final box = tester.widget<TextField>(find.byType(TextField).first);
+      expect(box.controller!.text, 'din');
+    });
+
+    testWidgets('applying uses a search typed just before opening', (
+      tester,
+    ) async {
+      final s = Setup();
+      await open(tester, s);
+      await tester.enterText(find.byType(TextField).first, 'din');
+      await tester.tap(find.bySemanticsLabel('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Amount high'));
+      await tester.tap(find.textContaining('Show'));
+      await tester.pumpAndSettle();
+      expect(s.expenses.queries.last.q, 'din');
+      expect(s.expenses.queries.last.sort, ExpenseSort.amountDesc);
+    });
+
+    testWidgets('dismissing the sheet still applies a pending search', (
+      tester,
+    ) async {
+      final s = Setup();
+      await open(tester, s);
+      await tester.enterText(find.byType(TextField).first, 'din');
+      await tester.tap(find.bySemanticsLabel('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(300, 20));
+      await tester.pumpAndSettle();
+      expect(s.expenses.queries.last.q, 'din');
     });
 
     testWidgets('Reset clears the pending filters', (tester) async {
@@ -430,7 +541,10 @@ void main() {
       final s = Setup(
         balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
       );
-      await open(tester, s, path: '/groups/1?view=balances');
+      final c = await open(tester, s, path: '/groups/1?view=balances');
+      // Keep a list alive, as it would be after visiting Expenses.
+      c.listen(groupExpensesProvider((1, const ExpenseFilters())), (_, _) {});
+      await tester.pumpAndSettle();
       final loads = s.balances.calls;
       final expenseLoads = s.expenses.queries.length;
       await tester.tap(find.text('Settle up'));
@@ -443,9 +557,71 @@ void main() {
       expect(s.settlements.created.single.paise, 185000);
       expect(s.settlements.created.single.groupId, 1);
       expect(s.balances.calls, greaterThan(loads));
-      expect(s.expenses.queries.length, greaterThanOrEqualTo(expenseLoads));
+      expect(s.expenses.queries.length, greaterThan(expenseLoads));
       expect(find.text('Payment recorded'), findsOneWidget);
       expect(find.text('Record payment'), findsNothing);
+    });
+
+    testWidgets('the reload still happens if the sheet is popped mid-post', (
+      tester,
+    ) async {
+      final s = Setup(
+        balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
+      );
+      s.settlements.gate = Completer<void>();
+      final c = await open(tester, s, path: '/groups/1?view=balances');
+      c.listen(groupExpensesProvider((1, const ExpenseFilters())), (_, _) {});
+      await tester.pumpAndSettle();
+      final loads = s.balances.calls;
+      final expenseLoads = s.expenses.queries.length;
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record payment'));
+      await tester.pump();
+      // Force the sheet away, as if it were disposed.
+      Navigator.of(tester.element(find.text('Record payment'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Record payment'), findsNothing);
+      s.settlements.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(s.balances.calls, greaterThan(loads));
+      expect(s.expenses.queries.length, greaterThan(expenseLoads));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the sheet cannot be dismissed while posting', (tester) async {
+      final s = Setup(
+        balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
+      );
+      s.settlements.gate = Completer<void>();
+      await open(tester, s, path: '/groups/1?view=balances');
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record payment'));
+      await tester.pump();
+      await tester.tapAt(const Offset(300, 20));
+      await tester.pumpAndSettle();
+      expect(find.text('Record payment'), findsOneWidget);
+      s.settlements.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Payment recorded'), findsOneWidget);
+    });
+
+    testWidgets('an amount that does not parse says why', (tester) async {
+      final s = Setup(
+        balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
+      );
+      await open(tester, s, path: '/groups/1?view=balances');
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Part of it'));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField).last, '10.555');
+      await tester.pump();
+      expect(find.text('Use up to 2 decimals'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, '0');
+      await tester.pump();
+      expect(find.text('Enter more than ₹0'), findsOneWidget);
     });
 
     testWidgets('a part payment posts the typed amount', (tester) async {
@@ -547,7 +723,7 @@ void main() {
         ],
       );
       await open(tester, s, path: '/groups/1?view=totals');
-      expect(find.text('group spent'), findsOneWidget);
+      expect(find.text('Group spent'), findsOneWidget);
       expect(find.text('₹42,600'), findsOneWidget);
       expect(find.text('₹8,520'), findsOneWidget);
       expect(find.text('Stay'), findsOneWidget);

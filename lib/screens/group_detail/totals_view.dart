@@ -67,7 +67,7 @@ class _Body extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 24, right: 4),
       children: [
         _StatCard(
-          label: 'group spent',
+          label: 'Group spent',
           paise: totals.totalSpentPaise,
           color: c.amber,
         ),
@@ -76,7 +76,7 @@ class _Body extends StatelessWidget {
           children: [
             Expanded(
               child: _StatCard(
-                label: 'your share',
+                label: 'Your share',
                 paise: totals.mySharePaise,
                 color: c.mint,
               ),

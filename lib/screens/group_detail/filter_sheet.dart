@@ -127,7 +127,7 @@ class _FilterFormState extends ConsumerState<_FilterForm> {
           child: Semantics(
             button: true,
             child: InkWell(
-              onTap: () => _change(const ExpenseFilters()),
+              onTap: () => _change(ExpenseFilters(q: _pending.q)),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
                   minHeight: kMinTap,

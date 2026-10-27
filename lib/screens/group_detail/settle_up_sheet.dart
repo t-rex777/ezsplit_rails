@@ -30,6 +30,8 @@ Future<void> showSettleUpSheet(
   final recorded = await showBrutalSheet<bool>(
     context,
     title: 'Settle up',
+    // Dragging could close the sheet while a payment is posting.
+    enableDrag: false,
     child: _SettleForm(
       groupId: groupId,
       transfer: transfer,
@@ -110,7 +112,14 @@ class _SettleFormState extends ConsumerState<_SettleForm> {
 
   String? get _error {
     final p = _parsed;
-    if (p == null || p <= _full) return null;
+    if (p == null) {
+      final t = _amount.text.trim();
+      if (t.isEmpty) return null;
+      return RegExp(r'^[0.,\s]*$').hasMatch(t)
+          ? 'Enter more than ₹0'
+          : 'Use up to 2 decimals';
+    }
+    if (p <= _full) return null;
     return _iPay
         ? "That's more than you owe"
         : "That's more than ${_from.split(' ').first} owes";
@@ -126,27 +135,32 @@ class _SettleFormState extends ConsumerState<_SettleForm> {
       _posting = true;
       _postError = null;
     });
+    // The container outlives this sheet, so the reload happens even if the
+    // sheet is gone by the time the post finishes.
+    final container = ProviderScope.containerOf(context);
+    final repo = ref.read(settlementsRepositoryProvider);
+    final groupId = widget.groupId;
     try {
-      await ref
-          .read(settlementsRepositoryProvider)
-          .create(
-            payeeId: _t.toUserId,
-            paise: paise,
-            settledOn: DateTime.now(),
-            groupId: widget.groupId,
-          );
-      ref.invalidate(groupBalancesProvider(widget.groupId));
-      ref.invalidate(groupExpensesProvider);
-      ref.invalidate(groupProvider(widget.groupId));
-      ref.invalidate(groupsProvider);
-      if (mounted) Navigator.of(context).pop(true);
+      await repo.create(
+        payeeId: _t.toUserId,
+        paise: paise,
+        settledOn: DateTime.now(),
+        groupId: groupId,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _posting = false;
         _postError = errorMessage(e);
       });
+      return;
     }
+    container
+      ..invalidate(groupBalancesProvider(groupId))
+      ..invalidate(groupExpensesProvider)
+      ..invalidate(groupProvider(groupId))
+      ..invalidate(groupsProvider);
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
@@ -155,86 +169,93 @@ class _SettleFormState extends ConsumerState<_SettleForm> {
     final text = Theme.of(context).textTheme;
     final headline = _iPay ? 'You pay $_to' : '$_from pays you';
     final error = _error ?? _postError;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Avatar(_initial(_from), tintFor(context, _t.fromUserId)),
-            const SizedBox(width: 8),
-            const Icon(Symbols.arrow_forward),
-            const SizedBox(width: 8),
-            Avatar(_initial(_to), tintFor(context, _t.toUserId)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                headline,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+    return PopScope(
+      canPop: !_posting,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Avatar(_initial(_from), tintFor(context, _t.fromUserId)),
+              const SizedBox(width: 8),
+              const Icon(Symbols.arrow_forward),
+              const SizedBox(width: 8),
+              Avatar(_initial(_to), tintFor(context, _t.toUserId)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  headline,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        BrutalInput(
-          controller: _amount,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          prefix: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 4),
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                '₹',
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
+            ],
           ),
-          errorText: error,
-          inputFormatters: [_RupeesFormatter()],
-          onChanged: (_) => setState(() => _postError = null),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            BrutalPill(
-              label: 'Full amount',
-              selected: _isFull,
-              onTap: () => setState(() {
-                _amount.text = _plain(_full);
-                _postError = null;
-              }),
+          const SizedBox(height: 16),
+          BrutalInput(
+            controller: _amount,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            prefix: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 4),
+              child: Center(
+                widthFactor: 1,
+                child: Text(
+                  '₹',
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
-            BrutalPill(
-              label: 'Part of it',
-              selected: !_isFull,
-              onTap: () {
-                if (!_isFull) return;
-                setState(() => _amount.clear());
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'This records a payment. No money moves in the app.',
-          style: text.bodyMedium?.copyWith(color: c.ink),
-        ),
-        const SizedBox(height: 16),
-        if (_iPay)
-          BrutalButton(
-            label: 'Record payment',
-            onPressed: _canRecord ? _record : null,
-          )
-        else
+            errorText: error,
+            inputFormatters: [_RupeesFormatter()],
+            onChanged: (_) => setState(() => _postError = null),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              BrutalPill(
+                label: 'Full amount',
+                selected: _isFull,
+                onTap: () => setState(() {
+                  _amount.text = _plain(_full);
+                  _postError = null;
+                }),
+              ),
+              BrutalPill(
+                label: 'Part of it',
+                selected: !_isFull,
+                onTap: () {
+                  if (!_isFull) return;
+                  setState(() => _amount.clear());
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Text(
-            'Ask $_from to record it',
-            textAlign: TextAlign.center,
-            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            'This records a payment. No money moves in the app.',
+            style: text.bodyMedium?.copyWith(color: c.ink),
           ),
-      ],
+          const SizedBox(height: 16),
+          if (_iPay)
+            BrutalButton(
+              label: 'Record payment',
+              onPressed: _canRecord ? _record : null,
+            )
+          else
+            Text(
+              'Ask $_from to record it',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+        ],
+      ),
     );
   }
 }
