@@ -8,6 +8,7 @@ import '../../domain/money.dart';
 import '../../domain/settle_plan.dart';
 import '../../state/group_detail.dart';
 import '../../state/groups.dart';
+import '../../state/summary.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/brutal_button.dart';
@@ -160,6 +161,7 @@ class _SettleFormState extends ConsumerState<_SettleForm> {
       ..invalidate(groupExpensesProvider)
       ..invalidate(groupProvider(groupId))
       ..invalidate(groupsProvider);
+    invalidateMonthlySummaries(container.invalidate);
     if (mounted) Navigator.of(context).pop(true);
   }
 

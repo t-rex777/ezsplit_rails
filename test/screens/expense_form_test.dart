@@ -5,6 +5,7 @@ import 'package:ezsplit_mobile/data/models.dart';
 import 'package:ezsplit_mobile/domain/money.dart';
 import 'package:ezsplit_mobile/domain/split.dart';
 import 'package:ezsplit_mobile/state/expense_form.dart';
+import 'package:ezsplit_mobile/state/summary.dart';
 import 'package:ezsplit_mobile/widgets/brutal_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +42,7 @@ class Setup {
   final FakeCategoriesRepository categories;
   final expenses = FakeExpensesRepository();
   final balances = FakeBalancesRepository(goaBalances());
+  final summary = FakeSummaryRepository();
 }
 
 Future<ProviderContainer> open(
@@ -61,6 +63,7 @@ Future<ProviderContainer> open(
       expenses: s.expenses,
       balances: s.balances,
       categories: s.categories,
+      summary: s.summary,
     ),
   );
   routerOf(c).go(path);
@@ -491,6 +494,21 @@ void main() {
       await fillBasics(tester);
       await tapSave(tester);
       expect(s.balances.calls, greaterThan(before));
+    });
+  });
+
+  group('Dashboard', () {
+    testWidgets('saving an expense reloads the dashboard summary', (
+      tester,
+    ) async {
+      final s = Setup();
+      final c = await open(tester, s);
+      c.listen(monthlySummaryProvider(DateTime(2026, 10)), (_, _) {});
+      await tester.pumpAndSettle();
+      expect(s.summary.requested, ['2026-10']);
+      await fillBasics(tester);
+      await tapSave(tester);
+      expect(s.summary.requested, ['2026-10', '2026-10']);
     });
   });
 

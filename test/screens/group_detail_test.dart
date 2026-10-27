@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ezsplit_mobile/state/group_detail.dart';
+import 'package:ezsplit_mobile/state/summary.dart';
 
 import '../support/fakes.dart';
 import '../support/harness.dart';
@@ -35,6 +36,7 @@ class Setup {
   final FakeExpensesRepository expenses;
   final FakeBalancesRepository balances;
   final settlements = FakeSettlementsRepository();
+  final summary = FakeSummaryRepository();
 }
 
 Future<ProviderContainer> open(
@@ -53,6 +55,7 @@ Future<ProviderContainer> open(
       expenses: s.expenses,
       balances: s.balances,
       settlements: s.settlements,
+      summary: s.summary,
     ),
   );
   routerOf(c).go(path);
@@ -568,6 +571,23 @@ void main() {
       expect(s.expenses.queries.length, greaterThan(expenseLoads));
       expect(find.text('Payment recorded'), findsOneWidget);
       expect(find.text('Record payment'), findsNothing);
+    });
+
+    testWidgets('recording a payment reloads the dashboard summary', (
+      tester,
+    ) async {
+      final s = Setup(
+        balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
+      );
+      final c = await open(tester, s, path: '/groups/1?view=balances');
+      c.listen(monthlySummaryProvider(DateTime(2026, 10)), (_, _) {});
+      await tester.pumpAndSettle();
+      expect(s.summary.requested, ['2026-10']);
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record payment'));
+      await tester.pumpAndSettle();
+      expect(s.summary.requested, ['2026-10', '2026-10']);
     });
 
     testWidgets('the reload still happens if the sheet is popped mid-post', (

@@ -8,6 +8,7 @@ import '../../data/models.dart';
 import '../../state/group_icons.dart';
 import '../../state/groups.dart';
 import '../../state/session.dart';
+import '../../state/summary.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/avatar.dart';
 import '../../widgets/brutal_button.dart';
@@ -84,6 +85,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     );
     if (!left || !mounted) return;
     ref.invalidate(groupsProvider);
+    invalidateMonthlySummaries(ref.invalidate);
     router?.go('/groups');
   }
 
@@ -101,6 +103,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     final deleted = await _run(() => repo.delete(_id));
     if (!deleted || !mounted) return;
     ref.invalidate(groupsProvider);
+    invalidateMonthlySummaries(ref.invalidate);
     router?.go('/groups');
   }
 

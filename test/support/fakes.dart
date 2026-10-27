@@ -174,11 +174,14 @@ class FakeUsersRepository extends UsersRepository {
 
 List<Override> repoOverrides(
   FakeGroupsRepository groups,
-  FakeUsersRepository users,
-) => [
+  FakeUsersRepository users, {
+  FakeSummaryRepository? summary,
+}) => [
   groupsRepositoryProvider.overrideWithValue(groups),
   usersRepositoryProvider.overrideWithValue(users),
-  summaryRepositoryProvider.overrideWithValue(FakeSummaryRepository()),
+  summaryRepositoryProvider.overrideWithValue(
+    summary ?? FakeSummaryRepository(),
+  ),
 ];
 
 const milisha = User(
@@ -438,8 +441,9 @@ List<Override> detailOverrides({
   required FakeBalancesRepository balances,
   FakeSettlementsRepository? settlements,
   FakeCategoriesRepository? categories,
+  FakeSummaryRepository? summary,
 }) => [
-  ...repoOverrides(groups, FakeUsersRepository()),
+  ...repoOverrides(groups, FakeUsersRepository(), summary: summary),
   expensesRepositoryProvider.overrideWithValue(expenses),
   balancesRepositoryProvider.overrideWithValue(balances),
   settlementsRepositoryProvider.overrideWithValue(

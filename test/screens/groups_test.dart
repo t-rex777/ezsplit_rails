@@ -3,6 +3,7 @@ import 'package:ezsplit_mobile/screens/groups/group_settings_screen.dart';
 import 'package:ezsplit_mobile/screens/groups/groups_screen.dart';
 import 'package:ezsplit_mobile/screens/groups/new_group_screen.dart';
 import 'package:ezsplit_mobile/state/group_icons.dart';
+import 'package:ezsplit_mobile/state/summary.dart';
 import 'package:ezsplit_mobile/theme/app_theme.dart';
 import 'package:ezsplit_mobile/widgets/brutal_button.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ Future<ProviderContainer> pumpScreen(
   Widget screen,
   FakeGroupsRepository groups, {
   FakeUsersRepository? users,
+  FakeSummaryRepository? summary,
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   SharedPreferences.setMockInitialValues({});
@@ -29,7 +31,11 @@ Future<ProviderContainer> pumpScreen(
     ProviderScope(
       overrides: [
         ...overridesFor(FakeAuthRepository(current: testUser)),
-        ...repoOverrides(groups, users ?? FakeUsersRepository()),
+        ...repoOverrides(
+          groups,
+          users ?? FakeUsersRepository(),
+          summary: summary,
+        ),
       ],
       child: MaterialApp(theme: buildTheme(Brightness.light), home: screen),
     ),
@@ -309,6 +315,31 @@ void main() {
       await tester.pumpAndSettle();
       expect(repo.calls, ['removeMember 7 101']);
       expect(find.text('Settle up before leaving'), findsOneWidget);
+    });
+
+    testWidgets('leaving and deleting a group reload the dashboard summary', (
+      tester,
+    ) async {
+      for (final (group, button, confirm) in [
+        (member, 'Leave group', 'Yes, leave'),
+        (owned, 'Delete group', 'Yes, delete'),
+      ]) {
+        final summary = FakeSummaryRepository();
+        final c = await pumpScreen(
+          tester,
+          const GroupSettingsScreen(groupId: 7),
+          FakeGroupsRepository(groups: [group]),
+          summary: summary,
+        );
+        c.listen(monthlySummaryProvider(DateTime(2026, 10)), (_, _) {});
+        await tester.pumpAndSettle();
+        expect(summary.requested, ['2026-10']);
+        await tester.tap(find.widgetWithText(BrutalButton, button));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(BrutalButton, confirm));
+        await tester.pumpAndSettle();
+        expect(summary.requested, ['2026-10', '2026-10'], reason: button);
+      }
     });
 
     testWidgets('Delete asks before deleting', (tester) async {

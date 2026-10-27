@@ -10,6 +10,7 @@ import '../screens/groups/group_widgets.dart' show errorMessage;
 import 'group_detail.dart';
 import 'groups.dart';
 import 'session.dart';
+import 'summary.dart';
 
 const lastCategoryKey = 'last_category_id';
 
@@ -52,6 +53,7 @@ void invalidateAfterExpenseChange(
   invalidate(groupTotalsProvider(groupId));
   invalidate(groupProvider(groupId));
   invalidate(groupsProvider);
+  invalidateMonthlySummaries(invalidate);
   if (expenseId != null) invalidate(expenseProvider(expenseId));
 }
 

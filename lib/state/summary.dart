@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 
 import '../data/models.dart';
 import '../data/summary_repository.dart';
@@ -12,3 +13,7 @@ final monthlySummaryProvider = FutureProvider.autoDispose
       (ref, month) => ref.watch(summaryRepositoryProvider).month(month),
       retry: (_, _) => null,
     );
+
+/// The dashboard stays mounted in its tab, so every change to money must call this.
+void invalidateMonthlySummaries(void Function(ProviderOrFamily) invalidate) =>
+    invalidate(monthlySummaryProvider);
