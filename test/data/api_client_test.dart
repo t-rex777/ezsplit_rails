@@ -1,0 +1,169 @@
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart';
+import 'package:ezsplit_mobile/data/api_client.dart';
+import 'package:ezsplit_mobile/data/api_error.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http_mock_adapter/http_mock_adapter.dart';
+
+void main() {
+  late Dio dio;
+  late DioAdapter adapter;
+  late ApiClient client;
+  late int unauthorizedCalls;
+
+  setUp(() {
+    dio = Dio(BaseOptions(baseUrl: 'http://test'));
+    adapter = DioAdapter(dio: dio);
+    unauthorizedCalls = 0;
+    client = ApiClient(dio, onUnauthorized: () => unauthorizedCalls++);
+  });
+
+  test('sends Accept and Content-Type headers', () async {
+    adapter.onGet(
+      '/groups',
+      (s) => s.reply(200, {'ok': true}),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    );
+    expect(await client.get('/groups'), {'ok': true});
+  });
+
+  test('422 surfaces the first entry of errors', () async {
+    adapter.onPost(
+      '/expenses',
+      (s) => s.reply(422, {
+        'errors': ['Amount is required', 'Other'],
+        'message': 'nope',
+      }),
+      data: Matchers.any,
+    );
+    await expectLater(
+      client.post('/expenses', body: {}),
+      throwsA(
+        isA<ApiError>()
+            .having((e) => e.message, 'message', 'Amount is required')
+            .having((e) => e.status, 'status', 422),
+      ),
+    );
+    expect(unauthorizedCalls, 0);
+  });
+
+  test('falls back to message when errors is absent', () async {
+    adapter.onGet('/x', (s) => s.reply(500, {'message': 'Boom'}));
+    await expectLater(
+      client.get('/x'),
+      throwsA(isA<ApiError>().having((e) => e.message, 'message', 'Boom')),
+    );
+  });
+
+  test('401 is unauthorized and fires onUnauthorized', () async {
+    adapter.onGet(
+      '/groups',
+      (s) => s.reply(401, {
+        'errors': ['No'],
+      }),
+    );
+    await expectLater(
+      client.get('/groups'),
+      throwsA(
+        isA<ApiError>().having((e) => e.isUnauthorized, 'isUnauthorized', true),
+      ),
+    );
+    expect(unauthorizedCalls, 1);
+  });
+
+  test('302 to /session/new is unauthorized with status 401', () async {
+    adapter.onGet(
+      '/',
+      (s) => s.reply(
+        302,
+        '',
+        headers: {
+          'location': ['http://test/session/new'],
+        },
+      ),
+    );
+    await expectLater(
+      client.get('/'),
+      throwsA(
+        isA<ApiError>()
+            .having((e) => e.status, 'status', 401)
+            .having((e) => e.isUnauthorized, 'isUnauthorized', true),
+      ),
+    );
+    expect(unauthorizedCalls, 1);
+  });
+
+  test('302 is handled the same when dio does not throw on 3xx', () async {
+    dio = Dio(BaseOptions(baseUrl: 'http://test', validateStatus: (_) => true));
+    adapter = DioAdapter(dio: dio);
+    client = ApiClient(dio, onUnauthorized: () => unauthorizedCalls++);
+    adapter.onGet(
+      '/',
+      (s) => s.reply(
+        302,
+        '',
+        headers: {
+          'location': ['http://test/session/new'],
+        },
+      ),
+    );
+    await expectLater(
+      client.get('/'),
+      throwsA(isA<ApiError>().having((e) => e.status, 'status', 401)),
+    );
+  });
+
+  test('failed login 401 does not fire onUnauthorized', () async {
+    adapter.onPost(
+      '/session',
+      (s) => s.reply(401, {
+        'errors': ['Invalid credentials'],
+        'message': 'Invalid email address or password',
+      }),
+      data: Matchers.any,
+    );
+    await expectLater(
+      client.post('/session', body: {'email_address': 'a', 'password': 'b'}),
+      throwsA(
+        isA<ApiError>()
+            .having((e) => e.status, 'status', 401)
+            .having((e) => e.message, 'message', 'Invalid credentials'),
+      ),
+    );
+    expect(unauthorizedCalls, 0);
+  });
+
+  test('no response gives the connection message and does not fire', () async {
+    adapter.onGet(
+      '/x',
+      (s) => s.throws(
+        500,
+        DioException(
+          requestOptions: RequestOptions(path: '/x'),
+          type: DioExceptionType.connectionError,
+        ),
+      ),
+    );
+    await expectLater(
+      client.get('/x'),
+      throwsA(
+        isA<ApiError>()
+            .having((e) => e.status, 'status', null)
+            .having(
+              (e) => e.message,
+              'message',
+              "Couldn't reach ezsplit. Check your connection.",
+            ),
+      ),
+    );
+    expect(unauthorizedCalls, 0);
+  });
+
+  test('keeps a cookie jar reference for logout', () {
+    final jar = CookieJar();
+    expect(ApiClient(dio, cookieJar: jar).cookieJar, same(jar));
+  });
+}
