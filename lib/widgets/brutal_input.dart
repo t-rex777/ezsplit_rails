@@ -15,6 +15,8 @@ class BrutalInput extends StatefulWidget {
     this.onChanged,
     this.onTap,
     this.textInputAction,
+    this.onSubmitted,
+    this.autofillHints,
   });
 
   final String? label;
@@ -29,6 +31,8 @@ class BrutalInput extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final VoidCallback? onTap;
   final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final Iterable<String>? autofillHints;
 
   @override
   State<BrutalInput> createState() => _BrutalInputState();
@@ -91,6 +95,8 @@ class _BrutalInputState extends State<BrutalInput> {
             onChanged: widget.onChanged,
             onTap: widget.onTap,
             textInputAction: widget.textInputAction,
+            onSubmitted: widget.onSubmitted,
+            autofillHints: widget.autofillHints,
             style: text.bodyLarge?.copyWith(color: c.ink),
             cursorColor: c.ink,
             decoration: InputDecoration(

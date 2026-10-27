@@ -36,16 +36,24 @@ void main() {
     test('returns null for text, a missing field, or another path', () {
       expect(parseInviteLink('hello'), isNull);
       expect(parseInviteLink(''), isNull);
-      expect(
-        parseInviteLink('https://ezsplit.app/register?token=abc'),
-        isNull,
-      );
+      expect(parseInviteLink('https://ezsplit.app/register?token=abc'), isNull);
       expect(
         parseInviteLink('https://ezsplit.app/register?email_address=a@b.co'),
         isNull,
       );
       expect(
-        parseInviteLink('https://ezsplit.app/other?token=a&email_address=a@b.co'),
+        parseInviteLink(
+          'https://ezsplit.app/other?token=a&email_address=a@b.co',
+        ),
+        isNull,
+      );
+      // Bad UTF-8 throws FormatException, bad percent-encoding ArgumentError.
+      expect(
+        parseInviteLink('ezsplit://register?token=%C0%AF&email_address=a@b.c'),
+        isNull,
+      );
+      expect(
+        parseInviteLink('ezsplit://register?token=%zz&email_address=a@b.c'),
         isNull,
       );
       expect(
@@ -125,6 +133,62 @@ void main() {
       await tester.tap(find.text('Have an invite link?'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'hello');
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(find.text("That isn't an ezsplit invite link"), findsOneWidget);
+    });
+  });
+
+  group('Login details', () {
+    testWidgets('the expired message shows once', (tester) async {
+      final c = await pumpApp(tester, FakeAuthRepository(current: testUser));
+      c.read(sessionProvider.notifier).expire();
+      await tester.pumpAndSettle();
+      expect(find.text('Your session expired. Log in again.'), findsOneWidget);
+
+      await tester.tap(find.text('Forgot password?'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back to log in'));
+      await tester.pumpAndSettle();
+      expect(locationOf(c), '/login');
+      expect(find.text('Your session expired. Log in again.'), findsNothing);
+    });
+
+    testWidgets('the password is hidden until the toggle flips it', (
+      tester,
+    ) async {
+      await pumpApp(tester, FakeAuthRepository());
+      TextField password() =>
+          tester.widget<TextField>(find.byType(TextField).at(1));
+      expect(password().obscureText, isTrue);
+      await tester.tap(find.byTooltip('Show password'));
+      await tester.pump();
+      expect(password().obscureText, isFalse);
+      await tester.tap(find.byTooltip('Hide password'));
+      await tester.pump();
+      expect(password().obscureText, isTrue);
+    });
+
+    testWidgets('Done on the password field logs in', (tester) async {
+      final c = await pumpApp(tester, FakeAuthRepository());
+      await tester.enterText(find.byType(TextField).at(0), 'neha@gmail.com');
+      await tester.enterText(find.byType(TextField).at(1), 'secret1');
+      await tester.pump();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(locationOf(c), '/home');
+    });
+
+    testWidgets('the paste sheet rejects a malformed invite link', (
+      tester,
+    ) async {
+      await pumpApp(tester, FakeAuthRepository());
+      await tester.tap(find.text('Have an invite link?'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).last,
+        'ezsplit://register?token=%C0%AF&email_address=a@b.c',
+      );
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
       expect(find.text("That isn't an ezsplit invite link"), findsOneWidget);

@@ -82,6 +82,9 @@ class SessionNotifier extends AsyncNotifier<User?> {
   }
 }
 
+// No automatic retry: a failed load sends the user to Log in instead of
+// holding the splash while Riverpod retries.
 final sessionProvider = AsyncNotifierProvider<SessionNotifier, User?>(
   SessionNotifier.new,
+  retry: (_, _) => null,
 );

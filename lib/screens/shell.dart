@@ -47,7 +47,9 @@ class _OfflineBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: c.peach,
-          border: Border(top: BorderSide(color: c.ink, width: kCardBorder)),
+          border: Border(
+            top: BorderSide(color: c.ink, width: kCardBorder),
+          ),
         ),
         child: Row(
           children: [
@@ -56,10 +58,8 @@ class _OfflineBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 offlineMessage,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: onAccent,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: onAccent, fontWeight: FontWeight.w500),
               ),
             ),
           ],
@@ -100,7 +100,9 @@ class _TabBar extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: c.card,
-        border: Border(top: BorderSide(color: c.ink, width: kSheetBorder)),
+        border: Border(
+          top: BorderSide(color: c.ink, width: kSheetBorder),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,

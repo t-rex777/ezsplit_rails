@@ -30,6 +30,7 @@ class FakeAuthRepository implements AuthRepository {
   /// When set, currentUser() waits on it, so tests can hold the session in loading.
   Completer<void>? currentGate;
 
+  Object? currentError;
   Object? loginError;
   Object? resetError;
   final List<Map<String, Object?>> invites = [];
@@ -38,6 +39,7 @@ class FakeAuthRepository implements AuthRepository {
   @override
   Future<User?> currentUser() async {
     await currentGate?.future;
+    if (currentError != null) throw currentError!;
     return current;
   }
 
@@ -91,12 +93,13 @@ Future<ProviderContainer> pumpApp(
   WidgetTester tester,
   FakeAuthRepository repo, {
   ApiClient? client,
+  Stream<Uri>? links,
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   await tester.pumpWidget(
     ProviderScope(
       overrides: overridesFor(repo, client: client),
-      child: const EzsplitApp(listenForLinks: false),
+      child: EzsplitApp(listenForLinks: false, linkStream: links),
     ),
   );
   await tester.pumpAndSettle();

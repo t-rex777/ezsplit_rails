@@ -24,11 +24,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublic = _publicPaths.contains(path);
 
       // Wait for the saved session so a cold start doesn't flash /login.
-      if (session.isLoading && !session.hasValue) {
+      if (session.isLoading && !session.hasValue && !session.hasError) {
         return isPublic || path == '/splash' ? null : '/splash';
       }
 
-      final signedIn = session.value != null;
+      final signedIn = session.hasValue && session.value != null;
       if (path == '/splash') return signedIn ? '/home' : '/login';
       if (!signedIn && !isPublic) return '/login';
       // Accepting an invite signs the user in, which ends the invite flow too.

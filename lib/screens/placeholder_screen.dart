@@ -62,9 +62,8 @@ class SplashScreen extends StatelessWidget {
       body: Center(
         child: Text(
           'ezsplit',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+          style: Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
     );

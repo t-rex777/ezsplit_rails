@@ -197,6 +197,7 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
                 label: 'Set a password',
                 controller: _password,
                 obscureText: _hidden,
+                autofillHints: const [AutofillHints.newPassword],
                 onChanged: (_) => setState(() {}),
                 errorText: passwordError,
                 suffix: PasswordToggle(
@@ -215,11 +216,7 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 16),
-                AuthNotice(
-                  icon: Symbols.error,
-                  color: c.peach,
-                  title: _error!,
-                ),
+                AuthNotice(icon: Symbols.error, color: c.peach, title: _error!),
               ],
               const SizedBox(height: 24),
               BrutalButton(

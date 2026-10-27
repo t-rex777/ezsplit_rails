@@ -29,7 +29,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _expired = ref.read(sessionProvider.notifier).expiredMessage;
+    // Read once, then clear so it doesn't come back on the next visit.
+    final session = ref.read(sessionProvider.notifier);
+    _expired = session.expiredMessage;
+    session.expiredMessage = null;
     _email.addListener(_refresh);
     _password.addListener(_refresh);
   }
@@ -139,6 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.email],
                   ),
                   const SizedBox(height: 16),
                   BrutalInput(
@@ -146,6 +150,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _password,
                     obscureText: _hidden,
                     textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) {
+                      if (_ready) _submit();
+                    },
                     suffix: PasswordToggle(
                       hidden: _hidden,
                       onPressed: () => setState(() => _hidden = !_hidden),

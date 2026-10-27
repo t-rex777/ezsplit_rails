@@ -20,6 +20,9 @@ void main() {
     addTearDown(c.dispose);
     await c.read(themeModeProvider.notifier).set(ThemeMode.light);
     expect(c.read(themeModeProvider), ThemeMode.light);
-    expect((await SharedPreferences.getInstance()).getString('theme_mode'), 'light');
+    expect(
+      (await SharedPreferences.getInstance()).getString('theme_mode'),
+      'light',
+    );
   });
 }
