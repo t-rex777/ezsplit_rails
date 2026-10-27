@@ -10,6 +10,11 @@ class BrutalInput extends StatefulWidget {
     this.errorText,
     this.readOnly = false,
     this.keyboardType,
+    this.obscureText = false,
+    this.suffix,
+    this.onChanged,
+    this.onTap,
+    this.textInputAction,
   });
 
   final String? label;
@@ -17,6 +22,13 @@ class BrutalInput extends StatefulWidget {
   final String? errorText;
   final bool readOnly;
   final TextInputType? keyboardType;
+  final bool obscureText;
+
+  /// Trailing widget inside the border, such as a lock or a show/hide button.
+  final Widget? suffix;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback? onTap;
+  final TextInputAction? textInputAction;
 
   @override
   State<BrutalInput> createState() => _BrutalInputState();
@@ -75,11 +87,16 @@ class _BrutalInputState extends State<BrutalInput> {
             controller: widget.controller,
             readOnly: widget.readOnly,
             keyboardType: widget.keyboardType,
+            obscureText: widget.obscureText,
+            onChanged: widget.onChanged,
+            onTap: widget.onTap,
+            textInputAction: widget.textInputAction,
             style: text.bodyLarge?.copyWith(color: c.ink),
             cursorColor: c.ink,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
+              suffixIcon: widget.suffix,
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),

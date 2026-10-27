@@ -16,7 +16,13 @@ const Map<String, String> apiHeaders = {
 };
 
 class ApiClient {
-  ApiClient(this._dio, {this.cookieJar, this.onUnauthorized});
+  ApiClient(
+    this._dio, {
+    this.cookieJar,
+    this.onUnauthorized,
+    this.onOffline,
+    this.onOnline,
+  });
 
   final Dio _dio;
 
@@ -25,6 +31,12 @@ class ApiClient {
 
   /// Fires on a 401, or a redirect to /session/new, except for a failed login.
   void Function()? onUnauthorized;
+
+  /// Fires when a request gets no response at all.
+  void Function()? onOffline;
+
+  /// Fires when a request gets any response, whatever its status.
+  void Function()? onOnline;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -56,9 +68,13 @@ class ApiClient {
       );
     } on DioException catch (e) {
       final r = e.response;
-      if (r == null) throw const ApiError(message: connectionErrorMessage);
+      if (r == null) {
+        onOffline?.call();
+        throw const ApiError(message: connectionErrorMessage);
+      }
       response = r;
     }
+    onOnline?.call();
 
     final status = response.statusCode ?? 0;
     final data = response.data;

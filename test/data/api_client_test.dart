@@ -166,4 +166,26 @@ void main() {
     final jar = CookieJar();
     expect(ApiClient(dio, cookieJar: jar).cookieJar, same(jar));
   });
+
+  test('onOffline fires when no response arrives, onOnline on any response', () async {
+    var offline = 0;
+    var online = 0;
+    client.onOffline = () => offline++;
+    client.onOnline = () => online++;
+    adapter.onGet(
+      '/down',
+      (s) => s.throws(
+        0,
+        DioException(
+          requestOptions: RequestOptions(path: '/down'),
+          type: DioExceptionType.connectionError,
+        ),
+      ),
+    );
+    adapter.onGet('/bad', (s) => s.reply(422, {'message': 'Nope'}));
+    await expectLater(client.get('/down'), throwsA(isA<ApiError>()));
+    expect((offline, online), (1, 0));
+    await expectLater(client.get('/bad'), throwsA(isA<ApiError>()));
+    expect((offline, online), (1, 1));
+  });
 }

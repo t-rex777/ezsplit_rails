@@ -47,6 +47,31 @@ class SessionNotifier extends AsyncNotifier<User?> {
     state = AsyncData(user);
   }
 
+  /// The server signs the new user in and sets the cookie, so this ends signed in.
+  Future<void> acceptInvite({
+    required String token,
+    required String email,
+    required String firstName,
+    required String lastName,
+    required String phone,
+    required DateTime dob,
+    required String password,
+  }) async {
+    final user = await ref
+        .read(authRepositoryProvider)
+        .acceptInvite(
+          token: token,
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+          dob: dob,
+          password: password,
+        );
+    expiredMessage = null;
+    state = AsyncData(user);
+  }
+
   Future<void> logout() async {
     try {
       await ref.read(authRepositoryProvider).logout();

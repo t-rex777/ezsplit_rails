@@ -92,6 +92,8 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
 
     // 2px ink outline with a 2px gap, drawn outside the surface.
     surface = Stack(
+      // Passthrough lets a tight parent (a full-width button) reach the surface.
+      fit: StackFit.passthrough,
       clipBehavior: Clip.none,
       children: [
         surface,
