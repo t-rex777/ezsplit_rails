@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'screens/auth/accept_invite_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/group_detail/group_detail_screen.dart';
 import 'screens/groups/group_settings_screen.dart';
 import 'screens/groups/groups_screen.dart';
 import 'screens/groups/new_group_screen.dart';
@@ -82,9 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: ':id',
-                    builder: (_, state) => PlaceholderScreen(
-                      title: 'Group ${state.pathParameters['id']}',
-                      detail: 'View: ${_groupView(state)}',
+                    builder: (_, state) => GroupDetailScreen(
+                      groupId:
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                      view: state.uri.queryParameters['view'],
                     ),
                     routes: [
                       GoRoute(
@@ -159,9 +161,3 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
-
-String _groupView(GoRouterState state) {
-  const views = {'expenses', 'balances', 'totals'};
-  final view = state.uri.queryParameters['view'];
-  return views.contains(view) ? view! : 'expenses';
-}

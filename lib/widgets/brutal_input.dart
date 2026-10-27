@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/tokens.dart';
 
@@ -19,6 +20,7 @@ class BrutalInput extends StatefulWidget {
     this.textInputAction,
     this.onSubmitted,
     this.autofillHints,
+    this.inputFormatters,
   });
 
   final String? label;
@@ -39,6 +41,7 @@ class BrutalInput extends StatefulWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final Iterable<String>? autofillHints;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<BrutalInput> createState() => _BrutalInputState();
@@ -103,6 +106,7 @@ class _BrutalInputState extends State<BrutalInput> {
             textInputAction: widget.textInputAction,
             onSubmitted: widget.onSubmitted,
             autofillHints: widget.autofillHints,
+            inputFormatters: widget.inputFormatters,
             style: text.bodyLarge?.copyWith(color: c.ink),
             cursorColor: c.ink,
             decoration: InputDecoration(

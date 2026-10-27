@@ -23,6 +23,26 @@ String fullName(User u) {
   return full.isEmpty ? u.email : full;
 }
 
+/// A person on a balance row: first name, else last name.
+String balanceName(BalanceRow r) {
+  if (r.firstName.isNotEmpty) return r.firstName;
+  return r.lastName.isNotEmpty ? r.lastName : 'Member';
+}
+
+String balanceInitials(BalanceRow r) {
+  final f = r.firstName.isEmpty ? '' : r.firstName[0];
+  final l = r.lastName.isEmpty ? '' : r.lastName[0];
+  final both = (f + l).toUpperCase();
+  return both.isEmpty ? '?' : both;
+}
+
+/// "#5DCAA5" to a colour; [fallback] when the server sends something else.
+Color parseHexColor(String hex, Color fallback) {
+  final m = RegExp(r'^#?([0-9a-fA-F]{6})$').firstMatch(hex.trim());
+  if (m == null) return fallback;
+  return Color(0xFF000000 | int.parse(m.group(1)!, radix: 16));
+}
+
 /// The server's message for an ApiError, shown as is.
 String errorMessage(Object error) =>
     error is ApiError ? error.message : 'Something went wrong. Try again.';
