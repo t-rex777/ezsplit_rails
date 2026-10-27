@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'screens/auth/accept_invite_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/groups/group_settings_screen.dart';
+import 'screens/groups/groups_screen.dart';
+import 'screens/groups/new_group_screen.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/shell.dart';
 import 'state/session.dart';
@@ -12,10 +15,13 @@ import 'state/session.dart';
 const _publicPaths = {'/login', '/forgot', '/invite'};
 
 final routerProvider = Provider<GoRouter>((ref) {
+  // Full-screen forms use the root navigator so the tab bar hides behind them.
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
   final refresh = ValueNotifier<int>(0);
   ref.listen(sessionProvider, (_, _) => refresh.value++);
 
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/home',
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -66,13 +72,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/groups',
-                builder: (_, _) => const PlaceholderScreen(title: 'Groups'),
+                builder: (_, _) => const GroupsScreen(),
                 routes: [
                   // `new` must come before `:id`.
                   GoRoute(
                     path: 'new',
-                    builder: (_, _) =>
-                        const PlaceholderScreen(title: 'New group'),
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (_, _) => const NewGroupScreen(),
                   ),
                   GoRoute(
                     path: ':id',
@@ -83,8 +89,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     routes: [
                       GoRoute(
                         path: 'settings',
-                        builder: (_, _) =>
-                            const PlaceholderScreen(title: 'Group settings'),
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (_, state) => GroupSettingsScreen(
+                          groupId:
+                              int.tryParse(state.pathParameters['id'] ?? '') ??
+                              0,
+                        ),
                       ),
                       GoRoute(
                         path: 'expenses/new',

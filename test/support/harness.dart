@@ -94,11 +94,15 @@ Future<ProviderContainer> pumpApp(
   FakeAuthRepository repo, {
   ApiClient? client,
   Stream<Uri>? links,
+  List<Override> extraOverrides = const [],
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   await tester.pumpWidget(
     ProviderScope(
-      overrides: overridesFor(repo, client: client),
+      overrides: [
+        ...overridesFor(repo, client: client),
+        ...extraOverrides,
+      ],
       child: EzsplitApp(listenForLinks: false, linkStream: links),
     ),
   );

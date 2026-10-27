@@ -5,10 +5,17 @@ import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/api_client.dart';
 import 'package:ezsplit_mobile/state/offline.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 
+import 'support/fakes.dart';
 import 'support/harness.dart';
+
+List<Override> _repos() => repoOverrides(
+  FakeGroupsRepository(groups: [makeGroup(7, 'Goa trip')]),
+  FakeUsersRepository(),
+);
 
 void main() {
   testWidgets('with no session, /groups goes to /login', (tester) async {
@@ -46,7 +53,11 @@ void main() {
   });
 
   testWidgets('tabs switch screens', (tester) async {
-    final c = await pumpApp(tester, FakeAuthRepository(current: testUser));
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser),
+      extraOverrides: _repos(),
+    );
     for (final tab in ['Groups', 'Activity', 'Profile', 'Home']) {
       await tester.tap(find.widgetWithText(InkWell, tab));
       await tester.pumpAndSettle();
@@ -54,8 +65,34 @@ void main() {
     }
   });
 
+  testWidgets('new group and settings hide the tab bar', (tester) async {
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser),
+      extraOverrides: _repos(),
+    );
+    routerOf(c).go('/groups');
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(InkWell, 'Profile'), findsOneWidget);
+
+    for (final path in ['/groups/new', '/groups/7/settings']) {
+      routerOf(c).go(path);
+      await tester.pumpAndSettle();
+      expect(locationOf(c), path);
+      expect(
+        find.widgetWithText(InkWell, 'Profile'),
+        findsNothing,
+        reason: path,
+      );
+    }
+  });
+
   testWidgets('every route in the plan resolves', (tester) async {
-    final c = await pumpApp(tester, FakeAuthRepository(current: testUser));
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser),
+      extraOverrides: _repos(),
+    );
     for (final path in [
       '/groups/new',
       '/groups/7?view=balances',

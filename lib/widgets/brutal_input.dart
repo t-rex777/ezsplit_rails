@@ -12,6 +12,8 @@ class BrutalInput extends StatefulWidget {
     this.keyboardType,
     this.obscureText = false,
     this.suffix,
+    this.prefix,
+    this.hint,
     this.onChanged,
     this.onTap,
     this.textInputAction,
@@ -28,6 +30,10 @@ class BrutalInput extends StatefulWidget {
 
   /// Trailing widget inside the border, such as a lock or a show/hide button.
   final Widget? suffix;
+
+  /// Leading widget inside the border, such as a search icon.
+  final Widget? prefix;
+  final String? hint;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onTap;
   final TextInputAction? textInputAction;
@@ -102,6 +108,8 @@ class _BrutalInputState extends State<BrutalInput> {
             decoration: InputDecoration(
               border: InputBorder.none,
               suffixIcon: widget.suffix,
+              prefixIcon: widget.prefix,
+              hintText: widget.hint,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
