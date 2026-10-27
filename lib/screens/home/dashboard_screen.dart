@@ -8,6 +8,7 @@ import '../../state/session.dart';
 import '../../state/summary.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/avatar.dart';
+import '../../widgets/brutal_button.dart';
 import '../../widgets/brutal_card.dart';
 import '../../widgets/category_icon.dart';
 import '../groups/group_widgets.dart';
@@ -112,7 +113,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (summary.hasValue) _shown = summary.requireValue;
     final failed = summary.hasError && !summary.isLoading;
     final loading = summary.isLoading;
-    final data = failed ? null : _shown;
+    // After a failed refresh the provider still holds its last good value.
+    final data = failed
+        ? (summary.hasValue ? summary.requireValue : null)
+        : _shown;
     final text = Theme.of(context).textTheme;
     final name = ref.watch(sessionProvider).value?.firstName ?? '';
     final initials = name.isEmpty ? '' : name[0].toUpperCase();
@@ -146,11 +150,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 month: _month,
                 atCurrent: _atCurrent,
                 data: data,
-                dimmed: loading,
+                dimmed: loading || failed,
                 onPrevious: () => _step(-1),
                 onNext: _atCurrent ? null : () => _step(1),
               ),
-              if (failed)
+              if (loading && data == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: 28,
+                      child: CircularProgressIndicator(
+                        color: context.ez.ink,
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  ),
+                ),
+              if (failed && data == null)
                 SizedBox(
                   height: 260,
                   child: RetryMessage(
@@ -158,11 +175,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     onRetry: () =>
                         ref.invalidate(monthlySummaryProvider(_month)),
                   ),
-                )
-              else if (data != null)
+                ),
+              if (failed && data != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _InlineError(
+                    message: errorMessage(summary.error!),
+                    onRetry: () =>
+                        ref.invalidate(monthlySummaryProvider(_month)),
+                  ),
+                ),
+              if (data != null)
                 Opacity(
-                  opacity: loading ? 0.5 : 1,
-                  child: _Body(data: data),
+                  opacity: loading || failed ? 0.5 : 1,
+                  child: _Body(data: data, selected: _month),
                 ),
             ],
           ),
@@ -226,14 +252,18 @@ class _ShareCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 6),
-                  Text(
-                    formatRupees(data!.mySharePaise),
-                    softWrap: false,
-                    style: text.displaySmall?.copyWith(
-                      color: onAccent,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 40,
-                      height: 1.1,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      formatRupees(data!.mySharePaise),
+                      softWrap: false,
+                      style: text.displaySmall?.copyWith(
+                        color: onAccent,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 40,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                   Text(
@@ -278,16 +308,23 @@ class _Arrow extends StatelessWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.data});
+  const _Body({required this.data, required this.selected});
 
   final MonthlySummary data;
+
+  /// Names the month if data.month is malformed.
+  final DateTime selected;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final c = context.ez;
     final parts = data.month.split('-');
-    final month = monthName(DateTime(int.parse(parts[0]), int.parse(parts[1])));
+    final y = parts.length == 2 ? int.tryParse(parts[0]) : null;
+    final m = parts.length == 2 ? int.tryParse(parts[1]) : null;
+    final month = monthName(
+      y != null && m != null && m >= 1 && m <= 12 ? DateTime(y, m) : selected,
+    );
     final others = [
       for (final t in data.otherCurrencies)
         if (t.youOwePaise > 0 || t.owedToYouPaise > 0) t,
@@ -359,12 +396,16 @@ class _AmountCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: text.bodyLarge?.copyWith(color: onAccent)),
-          Text(
-            formatRupees(paise),
-            softWrap: false,
-            style: text.headlineSmall?.copyWith(
-              color: onAccent,
-              fontWeight: FontWeight.w700,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formatRupees(paise),
+              softWrap: false,
+              style: text.headlineSmall?.copyWith(
+                color: onAccent,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -425,25 +466,38 @@ class _CategoryRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            ExcludeSemantics(child: CategoryIcon(category.icon, ink, size: 22)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                category.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.bodyLarge,
+        LayoutBuilder(
+          builder: (context, box) => Row(
+            children: [
+              ExcludeSemantics(
+                child: CategoryIcon(category.icon, ink, size: 22),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              formatRupees(category.paise),
-              softWrap: false,
-              style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  category.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyLarge,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // The amount shrinks to fit; the name gives way first.
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    formatRupees(category.paise),
+                    softWrap: false,
+                    style: text.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         ExcludeSemantics(
@@ -475,6 +529,24 @@ class _CategoryRow extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(message)),
+        const SizedBox(width: 8),
+        BrutalButton(label: 'Try again', onPressed: onRetry),
       ],
     );
   }

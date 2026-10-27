@@ -45,6 +45,7 @@ Future<void> pumpDashboard(
   WidgetTester tester,
   FakeSummaryRepository repo, {
   Brightness brightness = Brightness.light,
+  DateTime? now,
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   tester.view.physicalSize = const Size(390, 844);
@@ -55,7 +56,7 @@ Future<void> pumpDashboard(
       overrides: [
         ...overridesFor(FakeAuthRepository(current: testUser)),
         summaryRepositoryProvider.overrideWithValue(repo),
-        nowProvider.overrideWithValue(DateTime(2026, 10, 15)),
+        nowProvider.overrideWithValue(now ?? DateTime(2026, 10, 15)),
       ],
       child: MaterialApp(
         theme: buildTheme(brightness),
@@ -324,6 +325,182 @@ void main() {
       await tester.fling(find.text('Hey Neha'), const Offset(0, 400), 1000);
       await tester.pumpAndSettle();
       expect(repo.requested.length, 2);
+    });
+
+    testWidgets('previous and next cross the year boundary', (tester) async {
+      await pumpDashboard(
+        tester,
+        FakeSummaryRepository(),
+        now: DateTime(2027, 1, 20),
+      );
+      expect(find.text('January 2027'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('Previous month'));
+      await tester.pumpAndSettle();
+      expect(find.text('December 2026'), findsOneWidget);
+      expect(find.text('No expenses in December'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('Next month'));
+      await tester.pumpAndSettle();
+      expect(find.text('January 2027'), findsOneWidget);
+    });
+
+    testWidgets('previous from January goes to December of last year', (
+      tester,
+    ) async {
+      final repo = FakeSummaryRepository();
+      await pumpDashboard(tester, repo, now: DateTime(2026, 1, 5));
+      await tester.tap(find.bySemanticsLabel('Previous month'));
+      await tester.pumpAndSettle();
+      expect(find.text('December 2025'), findsOneWidget);
+      expect(repo.requested, ['2026-01', '2025-12']);
+    });
+
+    testWidgets(
+      'an older response arriving late does not replace a newer one',
+      (tester) async {
+        MonthlySummary share(String month, int paise) => MonthlySummary(
+          month: month,
+          mySharePaise: paise,
+          youOwePaise: 0,
+          owedToYouPaise: 0,
+          categories: const [],
+          otherCurrencies: const [],
+        );
+        final repo = FakeSummaryRepository(
+          byMonth: {
+            '2026-10': october(),
+            '2026-09': share('2026-09', 222200),
+            '2026-08': share('2026-08', 111100),
+          },
+        );
+        await pumpDashboard(tester, repo);
+        repo.gates['2026-09'] = Completer<void>();
+        repo.gates['2026-08'] = Completer<void>();
+        await tester.tap(find.bySemanticsLabel('Previous month'));
+        await tester.pump();
+        await tester.tap(find.bySemanticsLabel('Previous month'));
+        await tester.pump();
+        expect(find.text('August 2026'), findsOneWidget);
+
+        repo.gates['2026-08']!.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('₹1,111'), findsOneWidget);
+        // September answers last, after the user already moved on.
+        repo.gates['2026-09']!.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('August 2026'), findsOneWidget);
+        expect(find.text('₹1,111'), findsOneWidget);
+        expect(find.text('₹2,222'), findsNothing);
+      },
+    );
+
+    testWidgets('huge amounts and long names fit at 390 wide', (tester) async {
+      final longName = List.filled(80, 'W').join();
+      await pumpDashboard(
+        tester,
+        FakeSummaryRepository(
+          byMonth: {
+            '2026-10': MonthlySummary(
+              month: '2026-10',
+              mySharePaise: 9999999999999,
+              youOwePaise: 9999999999999,
+              owedToYouPaise: 9999999999999,
+              categories: [
+                CategorySpend(
+                  name: longName,
+                  icon: 'home',
+                  color: '#EF9F27',
+                  paise: 9999999999999,
+                ),
+                const CategorySpend(
+                  name: 'Food',
+                  icon: 'restaurant',
+                  color: '#EF9F27',
+                  paise: 5000,
+                ),
+              ],
+              otherCurrencies: const [],
+            ),
+          },
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      // The full amount is in the tree, scaled rather than cut.
+      expect(find.text('₹99,99,99,99,999.99'), findsNWidgets(4));
+      expect(find.text('₹50'), findsOneWidget);
+    });
+
+    testWidgets('dark mode keeps accent fills and readable text', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        FakeSummaryRepository(byMonth: {'2026-10': october()}),
+        brightness: Brightness.dark,
+      );
+      final d = EzColors.dark;
+      expect(barColor(tester, 'Food'), d.green);
+      expect(barColor(tester, 'Travel'), d.peach);
+      expect(barColor(tester, 'Rent'), d.mint);
+
+      double contrast(Color a, Color b) {
+        final l1 = a.computeLuminance(), l2 = b.computeLuminance();
+        final hi = l1 > l2 ? l1 : l2, lo = l1 > l2 ? l2 : l1;
+        return (hi + 0.05) / (lo + 0.05);
+      }
+
+      Color colorOf(String t) =>
+          tester.widget<Text>(find.text(t)).style!.color!;
+      // Text on the dark card.
+      expect(contrast(colorOf('Food'), d.card), greaterThanOrEqualTo(4.5));
+      expect(contrast(colorOf('₹4,960'), d.card), greaterThanOrEqualTo(4.5));
+      // Text on the coloured fills.
+      expect(contrast(colorOf('₹12,400'), d.green), greaterThanOrEqualTo(4.5));
+      expect(contrast(colorOf('₹800'), d.peach), greaterThanOrEqualTo(4.5));
+      expect(contrast(colorOf('₹2,450'), d.mint), greaterThanOrEqualTo(4.5));
+    });
+
+    testWidgets('a failed refresh keeps the last data with an inline retry', (
+      tester,
+    ) async {
+      final repo = FakeSummaryRepository(byMonth: {'2026-10': october()});
+      await pumpDashboard(tester, repo);
+      repo.error = const ApiError(status: 500, message: 'Server is down.');
+      await tester.fling(find.text('Hey Neha'), const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+      expect(find.text('Server is down.'), findsOneWidget);
+      expect(find.text('₹12,400'), findsOneWidget);
+      repo.error = null;
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Server is down.'), findsNothing);
+      expect(find.text('₹12,400'), findsOneWidget);
+    });
+
+    testWidgets('the first load shows a progress indicator', (tester) async {
+      final repo = FakeSummaryRepository()..gate = Completer<void>();
+      GoogleFonts.config.allowRuntimeFetching = false;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...overridesFor(FakeAuthRepository(current: testUser)),
+            summaryRepositoryProvider.overrideWithValue(repo),
+            nowProvider.overrideWithValue(DateTime(2026, 10, 15)),
+          ],
+          child: MaterialApp(
+            theme: buildTheme(Brightness.light),
+            home: const DashboardScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.bySemanticsLabel('Previous month'), findsOneWidget);
+      repo.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('the recorded summary parses and renders', (tester) async {

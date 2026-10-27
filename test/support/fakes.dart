@@ -386,6 +386,9 @@ class FakeSummaryRepository extends SummaryRepository {
 
   /// When set, month() waits on it, so tests can hold a load open.
   Completer<void>? gate;
+
+  /// Per-month holds, keyed "2026-09", for out-of-order response tests.
+  final Map<String, Completer<void>> gates = {};
   Object? error;
 
   @override
@@ -394,6 +397,7 @@ class FakeSummaryRepository extends SummaryRepository {
         '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
     requested.add(key);
     await gate?.future;
+    await gates[key]?.future;
     if (error != null) throw error!;
     return byMonth[key] ?? emptySummary(key);
   }
