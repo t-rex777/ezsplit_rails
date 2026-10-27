@@ -193,4 +193,29 @@ void main() {
     await open(tester, s);
     expect(find.text('Expense not found'), findsOneWidget);
   });
+
+  testWidgets('the tab bar is hidden on the detail and the edit form', (
+    tester,
+  ) async {
+    final c = await open(tester, Setup(dinner(creatorId: 2)));
+    expect(find.text('Profile'), findsNothing);
+    routerOf(c).go('/expenses/1/edit');
+    await tester.pumpAndSettle();
+    expect(find.text('Profile'), findsNothing);
+    expect(find.text('Edit expense'), findsOneWidget);
+  });
+
+  testWidgets('after a delete, Back on the group goes to the groups list', (
+    tester,
+  ) async {
+    final c = await open(tester, Setup(dinner(creatorId: 2)));
+    await tester.tap(find.bySemanticsLabel('Delete expense'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(locationOf(c), '/groups/1');
+    await tester.tap(find.bySemanticsLabel('Back'));
+    await tester.pumpAndSettle();
+    expect(locationOf(c), '/groups');
+  });
 }

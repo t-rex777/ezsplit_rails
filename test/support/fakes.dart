@@ -63,8 +63,13 @@ class FakeGroupsRepository extends GroupsRepository {
   @override
   Future<List<Group>> list() async => groups;
 
+  int gets = 0;
+
   @override
-  Future<Group> get(int id) async => groups.firstWhere((g) => g.id == id);
+  Future<Group> get(int id) async {
+    gets++;
+    return groups.firstWhere((g) => g.id == id);
+  }
 
   @override
   Future<Group> create(String name, String? description) async {

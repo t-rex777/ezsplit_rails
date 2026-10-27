@@ -76,12 +76,26 @@ class EditExpenseScreen extends ConsumerWidget {
     if (e != null && e.groupId != null) {
       return ExpenseFormScreen(groupId: e.groupId!, expenseId: expenseId);
     }
+    if (e != null) {
+      return const _FormShell(
+        title: 'Edit expense',
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              "This expense isn't in a group, so it can't be edited here.",
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
     return _FormShell(
       title: 'Edit expense',
       child: expense.isLoading
           ? Center(child: CircularProgressIndicator(color: context.ez.ink))
           : RetryMessage(
-              message: expense.hasError ? errorMessage(expense.error!) : "This expense isn't in a group, so it can't be edited here.",
+              message: errorMessage(expense.error!),
               onRetry: () => ref.invalidate(expenseProvider(expenseId)),
             ),
     );

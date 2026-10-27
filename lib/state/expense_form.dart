@@ -262,15 +262,24 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
 
   ExpenseFormState _fromExpense(Expense e, int meId, Group group) {
     // A payer who has left the group still has to be choosable and visible.
-    final members = [
+    final everyone = [
       ...group.members,
       if (!group.members.any((u) => u.id == e.payer.id)) e.payer,
     ];
-    final shareIds = {for (final s in e.shares) s.userId};
-    final included = [
-      for (final u in members)
-        if (shareIds.contains(u.id)) u.id,
+    // The server hands leftover paise to the first people in distribution
+    // order, so the stored share order is kept; everyone else follows.
+    final byId = {for (final u in everyone) u.id: u};
+    final inSplit = <User>[];
+    for (final share in e.shares) {
+      final u = byId[share.userId];
+      if (u != null && !inSplit.contains(u)) inSplit.add(u);
+    }
+    final members = [
+      ...inSplit,
+      for (final u in everyone)
+        if (!inSplit.contains(u)) u,
     ];
+    final included = [for (final u in inSplit) u.id];
     final paiseById = {for (final s in e.shares) s.userId: s.paise};
     final mode = SplitMode.of(e.splitType);
     return ExpenseFormState(

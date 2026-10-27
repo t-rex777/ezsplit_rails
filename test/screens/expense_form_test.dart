@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/models.dart';
+import 'package:ezsplit_mobile/domain/money.dart';
+import 'package:ezsplit_mobile/domain/split.dart';
 import 'package:ezsplit_mobile/state/expense_form.dart';
 import 'package:ezsplit_mobile/widgets/brutal_button.dart';
 import 'package:flutter/material.dart';
@@ -632,6 +634,244 @@ void main() {
       final s = Setup();
       await open(tester, s, path: '/expenses/99/edit');
       expect(find.text('Expense not found'), findsOneWidget);
+    });
+  });
+
+  group('Edit round trip', () {
+    // Saves an untouched edit and returns the payload's distribution.
+    Future<NewExpense> saveUntouched(WidgetTester tester, Expense e) async {
+      final s = Setup(members: const [milisha, riya, arjun]);
+      s.expenses.details[e.id] = e;
+      await open(tester, s, path: '/expenses/${e.id}/edit');
+      await tapSave(tester);
+      return s.expenses.updated.single.expense;
+    }
+
+    Map<int, int> storedShares(Expense e) => {
+      for (final x in e.shares) x.userId: x.paise,
+    };
+
+    List<int> storedOrder(Expense e) => [for (final x in e.shares) x.userId];
+
+    // What the server computes from the payload (build_shares).
+    Map<int, int> serverShares(NewExpense n) {
+      final d = (n.toJson()['expense'] as Map)['distribution'] as List;
+      return switch (n.splitType) {
+        SplitType.equal => splitEqual(n.paise, [
+          for (final x in d) (x as Map)['user_id'] as int,
+        ]),
+        SplitType.percentage => splitByWeights(n.paise, [
+          for (final x in d)
+            MapEntry(
+              (x as Map)['user_id'] as int,
+              double.parse(x['amount'] as String),
+            ),
+        ]),
+        SplitType.exact => {
+          for (final x in d)
+            (x as Map)['user_id'] as int: paiseFromApi(x['amount'] as String),
+        },
+      };
+    }
+
+    List<int> payloadOrder(NewExpense n) => [
+      for (final x in (n.toJson()['expense'] as Map)['distribution'] as List)
+        (x as Map)['user_id'] as int,
+    ];
+
+    testWidgets('equal: the extra paisa stays on the same person', (
+      tester,
+    ) async {
+      // The extra paisa sits on Riya, who is not first in member order.
+      final e = makeExpense(
+        7,
+        'Dinner',
+        paise: 100000,
+        payer: milisha,
+        creatorId: 2,
+        shares: const [
+          Share(userId: 3, paise: 33334),
+          Share(userId: 2, paise: 33333),
+          Share(userId: 4, paise: 33333),
+        ],
+      );
+      final n = await saveUntouched(tester, e);
+      expect(payloadOrder(n), storedOrder(e));
+      expect(serverShares(n), storedShares(e));
+    });
+
+    testWidgets('percentage 33.33 / 33.33 / 33.34 reproduces the shares', (
+      tester,
+    ) async {
+      final e = makeExpense(
+        7,
+        'Cab',
+        paise: 10000,
+        payer: milisha,
+        creatorId: 2,
+        splitType: SplitType.percentage,
+        shares: const [
+          Share(userId: 4, paise: 3334),
+          Share(userId: 3, paise: 3333),
+          Share(userId: 2, paise: 3333),
+        ],
+      );
+      final n = await saveUntouched(tester, e);
+      expect(payloadOrder(n), storedOrder(e));
+      expect(serverShares(n), storedShares(e));
+    });
+
+    testWidgets('percentage 50 / 25 / 25 with a leftover paisa', (
+      tester,
+    ) async {
+      final e = makeExpense(
+        7,
+        'Cab',
+        paise: 10001,
+        payer: milisha,
+        creatorId: 2,
+        splitType: SplitType.percentage,
+        shares: const [
+          Share(userId: 3, paise: 5001),
+          Share(userId: 2, paise: 2500),
+          Share(userId: 4, paise: 2500),
+        ],
+      );
+      final n = await saveUntouched(tester, e);
+      expect(payloadOrder(n), storedOrder(e));
+      expect(serverShares(n), storedShares(e));
+    });
+
+    testWidgets('exact reproduces the amounts in the same order', (
+      tester,
+    ) async {
+      final e = makeExpense(
+        7,
+        'Hotel',
+        paise: 10000,
+        payer: milisha,
+        creatorId: 2,
+        splitType: SplitType.exact,
+        shares: const [
+          Share(userId: 3, paise: 4001),
+          Share(userId: 4, paise: 3000),
+          Share(userId: 2, paise: 2999),
+        ],
+      );
+      final n = await saveUntouched(tester, e);
+      expect(payloadOrder(n), storedOrder(e));
+      expect(serverShares(n), storedShares(e));
+    });
+  });
+
+  group('Split edge cases', () {
+    testWidgets('turning someone off and on again in By % resets them to 0', (
+      tester,
+    ) async {
+      final c = await open(
+        tester,
+        Setup(members: const [milisha, riya, arjun, neha]),
+      );
+      await fillBasics(tester);
+      await tester.tap(find.text('By %'));
+      await tester.pumpAndSettle();
+      expect(formState(c).percents, {2: 2500, 3: 2500, 4: 2500, 5: 2500});
+      await tester.tap(find.text('Riya'));
+      await tester.pumpAndSettle();
+      expect(formState(c).included, [2, 4, 5]);
+      expect(find.text('25% left'), findsOneWidget);
+      await tester.tap(find.text('Riya'));
+      await tester.pumpAndSettle();
+      expect(formState(c).included, [2, 3, 4, 5]);
+      expect(formState(c).percents[3], isNull);
+      expect(find.text('25% left'), findsOneWidget);
+      await type(tester, 'percent-3', '25');
+      expect(find.text('100%'), findsOneWidget);
+      expect(formState(c).canSave, isTrue);
+    });
+
+    testWidgets('a split with only me sends one share', (tester) async {
+      final s = Setup(members: const [milisha, riya]);
+      final c = await open(tester, s);
+      await fillBasics(tester, amount: '100');
+      await tester.tap(find.text('₹50 each'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Riya'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Only you are in this split'), findsOneWidget);
+      expect(formState(c).canSave, isTrue);
+      await tapSave(tester);
+      final body = s.expenses.created.single.toJson()['expense'] as Map;
+      expect(body['distribution'], [
+        {'user_id': 2, 'amount': '100.00'},
+      ]);
+    });
+
+    testWidgets('someone else paid and I am out: no "You owe" line', (
+      tester,
+    ) async {
+      final s = Setup(members: const [milisha, riya, arjun]);
+      final c = await open(tester, s);
+      await fillBasics(tester, amount: '100');
+      await tester.tap(find.text('Paid by'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Riya').last);
+      await tester.pumpAndSettle();
+      expect(find.text('You owe Riya ₹33.34'), findsOneWidget);
+      await tester.tap(find.text('₹33.34 each'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('You'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('You owe'), findsNothing);
+      expect(find.text('₹50 each'), findsOneWidget);
+      expect(formState(c).included, [3, 4]);
+      await tapSave(tester);
+      final body = s.expenses.created.single.toJson()['expense'] as Map;
+      expect(body['payer_id'], 3);
+      expect((body['distribution'] as List).map((d) => (d as Map)['user_id']), [
+        3,
+        4,
+      ]);
+    });
+
+    testWidgets('a 12-digit amount splits by percent and still adds up', (
+      tester,
+    ) async {
+      final c = await open(
+        tester,
+        Setup(members: const [milisha, riya, arjun]),
+      );
+      await fillBasics(tester, amount: '999999999999.99');
+      await tester.tap(find.text('By %'));
+      await tester.pumpAndSettle();
+      await type(tester, 'percent-2', '33.33');
+      await type(tester, 'percent-3', '33.33');
+      await type(tester, 'percent-4', '33.34');
+      final shares = formState(c).shares;
+      expect(shares.values.fold<int>(0, (a, b) => a + b), 99999999999999);
+      expect(shares[4], 33339999999999);
+      expect(formState(c).canSave, isTrue);
+    });
+
+    testWidgets('saving reloads the group, its expenses and balances', (
+      tester,
+    ) async {
+      final s = Setup();
+      await open(tester, s, path: '/groups/1');
+      await tester.tap(find.bySemanticsLabel('Add expense'));
+      await tester.pumpAndSettle();
+      final lists = s.expenses.queries.length;
+      final groupGets = s.groups.gets;
+      final balances = s.balances.calls;
+      await fillBasics(tester);
+      await tapSave(tester);
+      expect(s.expenses.queries.length, greaterThan(lists));
+      expect(s.groups.gets, greaterThan(groupGets));
+      expect(s.balances.calls, greaterThan(balances));
     });
   });
 }

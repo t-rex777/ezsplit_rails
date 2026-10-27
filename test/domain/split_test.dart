@@ -64,4 +64,23 @@ void main() {
     expect(c.remaining, 1000);
     expect(checkPercent([60, 50]).remaining, -1000);
   });
+
+  test('a 12-digit total split by percent does not overflow', () {
+    const total = 99999999999999; // ₹999,999,999,999.99
+    final shares = splitPercent(total, [
+      const MapEntry(1, 33.33),
+      const MapEntry(2, 33.33),
+      const MapEntry(3, 33.34),
+    ]);
+    expect(shares.values.fold<int>(0, (a, b) => a + b), total);
+    expect(shares[1], 33330000000000);
+    expect(shares[3], 33339999999999);
+    // Whole hundredths as weights (what the form passes) give the same shares.
+    final hundredths = splitPercent(total, [
+      const MapEntry(1, 3333),
+      const MapEntry(2, 3333),
+      const MapEntry(3, 3334),
+    ]);
+    expect(hundredths, shares);
+  });
 }

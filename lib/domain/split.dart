@@ -24,7 +24,10 @@ Map<int, int> splitByWeights(int totalPaise, List<MapEntry<int, num>> weights) {
   }
   var assigned = 0;
   for (var i = 0; i < weights.length; i++) {
-    final share = (totalPaise * scaled[i]) ~/ sum;
+    // BigInt: a 12-digit total times a percent weight can pass 2^63.
+    final share =
+        (BigInt.from(totalPaise) * BigInt.from(scaled[i]) ~/ BigInt.from(sum))
+            .toInt();
     result[weights[i].key] = share;
     assigned += share;
   }
