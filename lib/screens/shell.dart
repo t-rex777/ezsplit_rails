@@ -105,13 +105,16 @@ class _TabBar extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           for (var i = 0; i < _tabs.length; i++)
-            _TabItem(
-              tab: _tabs[i],
-              active: i == index,
-              onTap: () => onSelect(i),
+            Expanded(
+              child: Center(
+                child: _TabItem(
+                  tab: _tabs[i],
+                  active: i == index,
+                  onTap: () => onSelect(i),
+                ),
+              ),
             ),
         ],
       ),
@@ -161,18 +164,24 @@ class _TabItem extends StatelessWidget {
               minHeight: kMinTap,
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(tab.icon, size: 24, fill: active ? 1 : 0, color: color),
                   const SizedBox(height: 2),
-                  Text(
-                    tab.label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                  // Large text scales down to fit instead of overflowing.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      tab.label,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],

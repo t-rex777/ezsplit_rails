@@ -66,6 +66,33 @@ void main() {
     }
   });
 
+  testWidgets('the tab bar fits 360 px wide at 2x text and keeps 44 px taps', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser),
+      extraOverrides: _repos(),
+    );
+    routerOf(c).go('/groups');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    for (final tab in ['Home', 'Groups', 'Activity', 'Profile']) {
+      final item = find.widgetWithText(InkWell, tab);
+      expect(item, findsOneWidget);
+      final size = tester.getSize(item);
+      expect(size.height, greaterThanOrEqualTo(44), reason: tab);
+      expect(size.width, greaterThanOrEqualTo(44), reason: tab);
+      final right = tester.getTopRight(item).dx;
+      expect(right, lessThanOrEqualTo(360), reason: tab);
+    }
+  });
+
   testWidgets('new group and settings hide the tab bar', (tester) async {
     final c = await pumpApp(
       tester,
