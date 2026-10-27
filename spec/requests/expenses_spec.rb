@@ -4,7 +4,7 @@ RSpec.describe "Expenses", type: :request do
   let!(:user) { create(:user) }
   let!(:second_user) { create(:user, first_name: "Second", last_name: "User", email_address: "second@example.com") }
   let!(:third_user) { create(:user, first_name: "Third", last_name: "User", email_address: "third@example.com") }
-  let!(:group) { create(:group, user: user) }
+  let!(:group) { create(:group, user: user, user_ids: [ user.id, second_user.id, third_user.id ]) }
   let!(:category) { create(:category, user: user) }
 
   before do
@@ -68,6 +68,7 @@ RSpec.describe "Expenses", type: :request do
                 "amount": "90.0",
                 "created_at": Time.now.utc.iso8601(3),
                 "currency": "INR",
+                "current_user_amount": "30.0",
                 "expense_date": "2025-08-30",
                 "name": "Test Expense",
                 "settled": false,
@@ -161,6 +162,7 @@ RSpec.describe "Expenses", type: :request do
                 "amount": "90.0",
                 "created_at": Time.now.utc.iso8601(3),
                 "currency": "INR",
+                "current_user_amount": "30.0",
                 "expense_date": "2025-08-30",
                 "name": "Test Expense",
                 "settled": false,

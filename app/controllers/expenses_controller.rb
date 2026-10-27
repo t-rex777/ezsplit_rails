@@ -1,17 +1,14 @@
 class ExpensesController < ApplicationController
   class InvalidDistributionError < StandardError; end
 
-  before_action :set_expense, only: %i[update destroy show]
-  before_action :validate_expense_split, only: %i[create update]
+  before_action :set_visible_expense, only: %i[show]
+  before_action :set_expense, only: %i[update destroy]
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    if params[:group_id].blank?
-      pagy_obj, @expenses = pagy(current_user.expenses)
-    else
-      pagy_obj, @expenses = pagy(current_user.expenses.where(group_id: params[:group_id]))
-    end
-
+    expenses = current_user.visible_expenses.order(expense_date: :desc, id: :desc)
+    expenses = expenses.where(group_id: params[:group_id]) if params[:group_id].present?
+    pagy_obj, @expenses = pagy(expenses)
     options = {
       include: [ :payer, :group, :category, :expenses_users ]
     }
@@ -26,9 +23,15 @@ class ExpensesController < ApplicationController
   end
 
   def create
+    @expense = current_user.expenses.new(expense_params.except(:distribution))
+    shares = build_shares(@expense.amount, @expense.split_type)
+    raise InvalidDistributionError, "Distribution is required" if shares.nil?
+
     ActiveRecord::Base.transaction do
-      @expense = current_user.expenses.create!(expense_params.except(:distribution))
-      create_expenses_users(@expense)
+      @expense.validate!
+      authorize_participants!(@expense, shares.keys)
+      @expense.save!
+      create_expenses_users(@expense, shares)
     end
     render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
   rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
@@ -36,14 +39,24 @@ class ExpensesController < ApplicationController
   end
 
   def update
-    ActiveRecord::Base.transaction do
-     @expense.expenses_users.destroy_all
-     @expense.update!(expense_params.except(:distribution))
-      create_expenses_users(@expense)
+    @expense.assign_attributes(expense_params.except(:distribution))
+    shares = build_shares(@expense.amount, @expense.split_type)
+    if shares.nil? && (@expense.amount_changed? || @expense.split_type_changed?)
+      raise InvalidDistributionError, "Distribution is required when amount or split type changes"
     end
-      render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
+
+    ActiveRecord::Base.transaction do
+      @expense.validate!
+      authorize_participants!(@expense, shares ? shares.keys : @expense.expenses_users.pluck(:user_id))
+      @expense.save!
+      if shares
+        @expense.expenses_users.destroy_all
+        create_expenses_users(@expense, shares)
+      end
+    end
+    render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
   rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
-      render json: { errors: [ exception.message ] }, status: :unprocessable_entity
+    render json: { errors: [ exception.message ] }, status: :unprocessable_entity
   end
 
   def destroy
@@ -55,46 +68,95 @@ class ExpensesController < ApplicationController
 
   private
 
-  def create_expenses_users(expense)
-    params[:expense][:distribution].map do |user|
-      amount = params[:expense][:split_type] == "percentage" ? user[:amount].to_f * params[:expense][:amount].to_f / 100 : user[:amount].to_f
-
-      expense.expenses_users.create!(
-        user_id: user[:user_id],
-        amount: amount
-      )
+  def create_expenses_users(expense, shares)
+    shares.each do |user_id, amount|
+      expense.expenses_users.create!(user_id: user_id, amount: amount)
     end
   end
 
-  def validate_expense_split
-    return unless params[:expense][:distribution].present?
+  # Returns { user_id => BigDecimal share }, or nil when no distribution was sent.
+  def build_shares(amount, split_type)
+    distribution = params.dig(:expense, :distribution)
+    return nil if distribution.blank?
 
-    total_amount = params[:expense][:distribution].map { |user| user[:amount].to_f }.sum
+    entries = distribution.map { |entry| [ entry[:user_id].to_i, entry[:amount] ] }
+    user_ids = entries.map(&:first)
+    raise InvalidDistributionError, "Each person can appear only once in the distribution" if user_ids.uniq.size != user_ids.size
 
-    case params[:expense][:split_type]
-    when "equal", "exact"
-      if total_amount.to_f != params[:expense][:amount].to_f
-        message = "Amount must be equal to the sum of the distribution"
-        raise InvalidDistributionError, message
+    unless Expense::SPLIT_TYPES.include?(split_type)
+      raise InvalidDistributionError, "Split type must be equal, percentage or exact"
+    end
+
+    raise InvalidDistributionError, "Amount is required" if amount.blank?
+    total = to_decimal(amount)
+    raise InvalidDistributionError, "Amount must be greater than 0" unless total.positive?
+
+    shares =
+      case split_type
+      when "equal"
+        split_by_weights(total, user_ids.index_with { 1 })
+      when "exact"
+        exact = entries.to_h { |user_id, value| [ user_id, to_decimal(value) ] }
+        raise InvalidDistributionError, "Amount must be equal to the sum of the distribution" if exact.values.sum != total
+        exact
+      when "percentage"
+        percents = entries.to_h { |user_id, value| [ user_id, to_decimal(value) ] }
+        raise InvalidDistributionError, "Total percentage must equal 100" if percents.values.sum != 100
+        split_by_weights(total, percents)
       end
-    when "percentage"
-      if total_amount.round(2) != 100.0
-        message = "Total percentage must equal 100"
-        raise InvalidDistributionError, message
-      end
+
+    raise InvalidDistributionError, "Shares cannot be negative" if shares.values.any?(&:negative?)
+    shares
+  end
+
+  # Splits total by weight, rounded down to the cent. Leftover cents go one each to the first people,
+  # so the shares always add up to the total exactly.
+  def split_by_weights(total, weights)
+    weight_sum = weights.values.sum
+    shares = weights.transform_values { |weight| (total * weight / weight_sum).round(2, BigDecimal::ROUND_DOWN) }
+    leftover_cents = ((total - shares.values.sum) * 100).to_i
+    shares.keys.first(leftover_cents).each { |user_id| shares[user_id] += BigDecimal("0.01") }
+    shares
+  end
+
+  def to_decimal(value)
+    BigDecimal(value.to_s).round(2)
+  rescue ArgumentError, TypeError
+    raise InvalidDistributionError, "Amounts must be numbers"
+  end
+
+  # Group expenses: everyone must be an active member. Friend expenses: everyone must be you or a friend.
+  def authorize_participants!(expense, participant_ids)
+    raise InvalidDistributionError, "Category not found" unless current_user.categories.exists?(expense.category_id)
+
+    people = participant_ids.map(&:to_i) | [ expense.payer_id ]
+
+    if expense.group_id
+      group = current_user.groups.find_by(id: expense.group_id)
+      raise InvalidDistributionError, "Group not found" unless group
+
+      outsiders = people - group.active_memberships.pluck(:user_id)
+      raise InvalidDistributionError, "Everyone in the expense must be a member of the group" if outsiders.any?
     else
-      message = "Split type must be equal, percentage or exact"
-      raise InvalidDistributionError, message
+      outsiders = people - current_user.friend_ids_with_self
+      raise InvalidDistributionError, "Everyone in the expense must be you or one of your friends" if outsiders.any?
     end
   end
 
-  # TODO: if amount is changed, distribution should also be changed
   def expense_params
     params.require(:expense).permit(:name, :amount, :split_type, :currency, :expense_date, :settled, :payer_id, :group_id, :category_id, distribution: [ :user_id, :amount ])
   end
 
+  # Only the creator can change or delete an expense.
   def set_expense
     @expense = current_user.expenses.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render json: { errors: [ "Expense not found" ] }, status: :not_found
+  end
+
+  # The creator, the payer, and everyone in the split can view an expense.
+  def set_visible_expense
+    @expense = current_user.visible_expenses.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { errors: [ "Expense not found" ] }, status: :not_found
   end

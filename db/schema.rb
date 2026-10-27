@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_27_100200) do
   create_table "categories", force: :cascade do |t|
     t.string "name"
     t.string "icon"
@@ -27,7 +27,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
     t.decimal "amount"
     t.string "currency"
     t.integer "payer_id", null: false
-    t.integer "group_id", null: false
+    t.integer "group_id"
     t.integer "category_id", null: false
     t.string "split_type"
     t.date "expense_date"
@@ -58,6 +58,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["friend_id"], name: "index_friendships_on_friend_id"
+    t.index ["user_id", "friend_id"], name: "index_friendships_on_user_id_and_friend_id", unique: true
     t.index ["user_id"], name: "index_friendships_on_user_id"
   end
 
@@ -68,6 +69,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
     t.date "left_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["group_id", "user_id"], name: "index_group_memberships_on_group_id_and_user_id", unique: true
     t.index ["group_id"], name: "index_group_memberships_on_group_id"
     t.index ["user_id"], name: "index_group_memberships_on_user_id"
   end
@@ -107,6 +109,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
+  create_table "settlements", force: :cascade do |t|
+    t.integer "payer_id", null: false
+    t.integer "payee_id", null: false
+    t.integer "group_id"
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.string "currency", null: false
+    t.string "notes"
+    t.date "settled_on", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["group_id"], name: "index_settlements_on_group_id"
+    t.index ["payee_id"], name: "index_settlements_on_payee_id"
+    t.index ["payer_id"], name: "index_settlements_on_payer_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
@@ -133,4 +150,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_07_023912) do
   add_foreign_key "invitations", "users", column: "invited_user_id"
   add_foreign_key "invitations", "users", column: "inviter_id"
   add_foreign_key "sessions", "users"
+  add_foreign_key "settlements", "groups"
+  add_foreign_key "settlements", "users", column: "payee_id"
+  add_foreign_key "settlements", "users", column: "payer_id"
 end

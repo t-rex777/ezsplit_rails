@@ -5,10 +5,13 @@ Rails.application.routes.draw do
   resources :user_registers, only: %i[ create new ]
   resources :users, only: %i[ index ]
   resources :expenses
-  resources :expenses_users, only: %i[ create update destroy ]
+  resources :settlements, only: %i[ index create destroy ]
+  resources :balances, only: %i[ index ]
   resources :invitations,  only: %i[ create update ]
 
   resources :groups do
+    post :add_members, on: :member
+    get :balances, on: :member, to: "balances#group"
     resources :group_memberships
   end
 

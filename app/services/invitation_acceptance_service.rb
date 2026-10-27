@@ -3,6 +3,7 @@ class InvitationAcceptanceService
   class InvitationAlreadyAcceptedError < StandardError; end
   class InvitationNotFoundError < StandardError; end
   class InvitationInvalidTokenError < StandardError; end
+  class InvitationEmailMismatchError < StandardError; end
 
   def initialize(invitation, invited_user, token)
     @invitation = invitation
@@ -30,6 +31,7 @@ class InvitationAcceptanceService
     raise InvitationExpiredError, "Invitation has expired." if @invitation.expired?
     raise InvitationAlreadyAcceptedError, "Invitation has already been accepted." if @invitation.accepted?
     raise InvitationInvalidTokenError, "Invalid invitation token." if @invitation.token != @token
+    raise InvitationEmailMismatchError, "This invitation was sent to a different email address." unless @invitation.sent_to?(@invited_user)
   end
 
   def update_invitation!
@@ -41,8 +43,8 @@ class InvitationAcceptanceService
   end
 
   def create_friendships!
-    @invitation.invited_user.friendships.create!(friend: @invitation.inviter)
-    @invitation.inviter.friendships.create!(friend: @invitation.invited_user)
+    Friendship.find_or_create_by!(user: @invitation.invited_user, friend: @invitation.inviter)
+    Friendship.find_or_create_by!(user: @invitation.inviter, friend: @invitation.invited_user)
   end
 
   def render_invitation_not_found

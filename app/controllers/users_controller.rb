@@ -3,7 +3,8 @@ class UsersController < ApplicationController
   def index
     pagy_obj, @users = pagy(current_user.friends)
     options = {
-      include: [ :groups ]
+      include: [ :groups ],
+      fields: { user: UserSerializer::PUBLIC_FIELDS }
     }
     render json: UserSerializer.new(@users, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json
   end
@@ -32,7 +33,8 @@ class UsersController < ApplicationController
     pagy_obj, @users = pagy(@users, limit: per_page)
 
     options = {
-      include: [ :groups ]
+      include: [ :groups ],
+      fields: { user: UserSerializer::PUBLIC_FIELDS }
     }
 
     render json: UserSerializer.new(@users, options.merge(meta: pagy_metadata(pagy_obj))).serializable_hash.to_json

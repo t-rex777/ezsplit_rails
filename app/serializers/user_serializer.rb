@@ -1,6 +1,9 @@
 class UserSerializer
   include JSONAPI::Serializer
 
+  # What other users may see. Phone and date of birth stay private.
+  PUBLIC_FIELDS = %i[id first_name last_name full_name email_address avatar_url groups].freeze
+
   attributes :id, :first_name, :last_name, :email_address, :phone, :avatar_url, :date_of_birth, :full_name
 
 

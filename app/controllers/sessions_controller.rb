@@ -24,11 +24,6 @@ class SessionsController < ApplicationController
 
   def create
     permitted_params = params.permit(:email_address, :password)
-    Rails.logger.info "Login attempt with: #{permitted_params.inspect}"
-
-    user = User.find_by(email_address: permitted_params[:email_address])
-    Rails.logger.info "User found: #{user&.email_address || 'No user found'}"
-
     respond_to do |format|
       if user = User.authenticate_by(permitted_params)
         Rails.logger.info "Authentication successful: #{user.email_address}"

@@ -1,8 +1,9 @@
 class GroupMembershipsController < ApplicationController
-  before_action :find_group, only: %i[show destroy]
+  before_action :set_group
+  before_action :set_group_membership, only: %i[show destroy]
 
   def new
-    @group_membership = GroupMembership.new
+    @group_membership = @group.group_memberships.new
   end
 
   def show
@@ -10,7 +11,7 @@ class GroupMembershipsController < ApplicationController
   end
 
   def index
-    pagy_obj, group_memberships = pagy(GroupMembership.all)
+    pagy_obj, group_memberships = pagy(@group.group_memberships)
     options = {
       include: [ :user, :group ]
     }
@@ -18,7 +19,8 @@ class GroupMembershipsController < ApplicationController
   end
 
   def create
-    @group_membership = GroupMembership.new(group_membership_params)
+    @group_membership = @group.group_memberships.find_or_initialize_by(user_id: group_membership_params[:user_id])
+    @group_membership.left_at = nil
 
     respond_to do |format|
       if @group_membership.save
@@ -53,13 +55,22 @@ class GroupMembershipsController < ApplicationController
   end
 
   def destroy
+    unless @group_membership.user_id == current_user.id || @group.owner?(current_user)
+      render json: {
+        status: :error,
+        errors: [ "Only the group owner can remove other members" ],
+        message: "Failed to leave group"
+      }, status: :forbidden
+      return
+    end
+
     respond_to do |format|
       if @group_membership.update(left_at: Date.current)
         format.json do
           render json: {
             status: :success,
             data: {
-              group: @group_membership.group.as_json(
+              group: @group_membership.group.reload.as_json(
                 include: {
                   users: {
                     only: [ :id, :email_address, :first_name, :last_name ]
@@ -82,26 +93,33 @@ class GroupMembershipsController < ApplicationController
         format.html { redirect_to @group_membership.group, alert: "Failed to leave group" }
       end
     end
-  rescue ActiveRecord::RecordNotFound
-    respond_to do |format|
-      format.json do
-        render json: {
-          status: :error,
-          errors: [ "Group membership not found" ],
-          message: "Group membership with ID #{params[:id]} does not exist"
-        }, status: :not_found
-      end
-      format.html { redirect_to groups_path, alert: "Group membership not found" }
-    end
   end
 
   private
 
   def group_membership_params
-    params.require(:group_membership).permit(:user_id, :group_id)
+    params.require(:group_membership).permit(:user_id)
   end
 
-  def find_group
-    @group_membership = GroupMembership.find(params[:id])
+  # Only active members can see or change a group's memberships.
+  def set_group
+    @group = current_user.groups.find(params[:group_id])
+  rescue ActiveRecord::RecordNotFound
+    render_not_found("Group not found", "Group with ID #{params[:group_id]} does not exist")
+  end
+
+  def set_group_membership
+    @group_membership = @group.group_memberships.find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render_not_found("Group membership not found", "Group membership with ID #{params[:id]} does not exist")
+  end
+
+  def render_not_found(error, message)
+    respond_to do |format|
+      format.json do
+        render json: { status: :error, errors: [ error ], message: message }, status: :not_found
+      end
+      format.html { redirect_to groups_path, alert: error }
+    end
   end
 end

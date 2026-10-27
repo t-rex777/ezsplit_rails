@@ -1,14 +1,12 @@
 class Group < ApplicationRecord
   belongs_to :user
   has_many :group_memberships, dependent: :destroy
-  has_many :users, through: :group_memberships
+  has_many :active_memberships, -> { where(left_at: nil) }, class_name: "GroupMembership"
+  has_many :users, through: :active_memberships
+  has_many :expenses, dependent: :restrict_with_error
+  has_many :settlements, dependent: :restrict_with_error
 
   validates :name, presence: true
-
-  # Get all expenses for this group
-  def expenses
-    Expense.where(group_id: id)
-  end
 
   # Get all expenses with includes for better performance
   def all_expenses
@@ -38,7 +36,11 @@ class Group < ApplicationRecord
       current_user_balance: current_user_balance,
       # todo: this will fail if first expense and other expenses has different currencies
       # but this is just a temporary solution to get the currency
-      currency: expenses.first.currency
+      currency: expenses.first&.currency
     }
+  end
+
+  def owner?(user)
+    user_id == user.id
   end
 end

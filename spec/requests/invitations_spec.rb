@@ -155,6 +155,8 @@ RSpec.describe "Invitations", type: :request do
 
     context "with existing user" do
       it "updates invitation and creates friendship" do
+        invitation.update!(email: invited_user.email_address)
+
         put "/invitations/#{invitation.id}", params: {
           invitation: {
             token: invitation.token,
@@ -169,6 +171,20 @@ RSpec.describe "Invitations", type: :request do
         expect(invitation.invited_user).to eq(invited_user)
         expect(invited_user.friendships.count).to eq(1)
         expect(invited_user.friendships.first.friend).to eq(invitation.inviter)
+        expect(user.friends).to eq([ invited_user ])
+      end
+
+      it "rejects an existing user whose email is not the one invited" do
+        put "/invitations/#{invitation.id}", params: {
+          invitation: {
+            token: invitation.token,
+            email_address: invited_user.email_address
+          }
+        }
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(Oj.load(response.body)["message"]).to eq("This invitation was sent to a different email address.")
+        expect(invited_user.friendships.count).to eq(0)
       end
 
       it "returns error when invitation is not found" do

@@ -20,6 +20,10 @@ class Invitation < ApplicationRecord
     accepted_at.present?
   end
 
+  def sent_to?(user)
+    email.to_s.strip.casecmp?(user.email_address)
+  end
+
   private
 
   def set_expiration

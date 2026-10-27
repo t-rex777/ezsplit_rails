@@ -37,7 +37,13 @@ RSpec.describe "Groups", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response_body.fetch("data").fetch("attributes")).to eq({
         name: "Test Group",
-        description: "Fun group"
+        description: "Fun group",
+        expense_summary: {
+          total_expenses: 0,
+          total_amount: "0.0",
+          current_user_balance: { total_paid: "0.0", total_owed: "0.0", net_balance: "0.0", status: "owes" },
+          currency: nil
+        }
         }.with_indifferent_access)
     end
   end
@@ -57,7 +63,13 @@ RSpec.describe "Groups", type: :request do
 
       expect(response_body.fetch("data").fetch("attributes")).to eq({
         name: "Test Group",
-        description: "Fun group"
+        description: "Fun group",
+        expense_summary: {
+          total_expenses: 0,
+          total_amount: "0.0",
+          current_user_balance: { total_paid: "0.0", total_owed: "0.0", net_balance: "0.0", status: "owes" },
+          currency: nil
+        }
         }.with_indifferent_access)
     end
   end
@@ -104,7 +116,8 @@ RSpec.describe "Groups", type: :request do
         expect(group.users).to include(user2)
         expect(group.users).not_to include(user1)
 
-        expect(GroupMembership.find_by(user_id: user1.id, group_id: group.id)).to be_nil
+        # Leaving keeps the row so past expenses keep their history.
+        expect(GroupMembership.find_by(user_id: user1.id, group_id: group.id).left_at).to eq(Date.current)
       end
     end
 
@@ -124,7 +137,9 @@ RSpec.describe "Groups", type: :request do
 
     it "deletes the group" do
       delete group_url(group)
-      expect(response).to have_http_status(:no_content)
+      expect(response).to have_http_status(:ok)
+      expect(Oj.load(response.body)["message"]).to eq("Group was successfully deleted")
+      expect(Group.exists?(group.id)).to be false
     end
 
     it "returns an error when the group does not exist" do

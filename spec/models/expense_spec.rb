@@ -7,7 +7,7 @@ RSpec.describe Expense, type: :model do
 
   describe "associations" do
     it { is_expected.to belong_to(:payer).class_name("User").with_foreign_key(:payer_id) }
-    it { is_expected.to belong_to(:group).class_name("Group").with_foreign_key(:group_id) }
+    it { is_expected.to belong_to(:group).class_name("Group").with_foreign_key(:group_id).optional }
     it { is_expected.to belong_to(:category).class_name("Category").with_foreign_key(:category_id) }
   end
 
@@ -38,8 +38,13 @@ RSpec.describe Expense, type: :model do
         expect(expense).to be_invalid
       end
 
-      it "is invalid when group is not present" do
+      it "is valid without a group, for an expense split with a friend" do
         expense.group = nil
+        expect(expense).to be_valid
+      end
+
+      it "is invalid when amount is zero" do
+        expense.amount = 0
         expect(expense).to be_invalid
       end
 

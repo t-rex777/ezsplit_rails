@@ -2,9 +2,10 @@ class User < ApplicationRecord
   has_secure_password
   has_many :sessions, dependent: :destroy
   has_many :group_memberships, dependent: :destroy
-  has_many :groups, through: :group_memberships
+  has_many :active_group_memberships, -> { where(left_at: nil) }, class_name: "GroupMembership"
+  has_many :groups, through: :active_group_memberships
+  has_many :owned_groups, class_name: "Group", dependent: :destroy
   has_many :categories, dependent: :destroy
-  has_many :groups, dependent: :destroy
   has_many :expenses, dependent: :destroy
   has_many :expenses_users, dependent: :destroy
   has_many :invitations, foreign_key: "inviter_id", dependent: :destroy
@@ -13,6 +14,8 @@ class User < ApplicationRecord
   has_many :inverse_friendships, class_name: "Friendship", foreign_key: "friend_id", dependent: :destroy
   has_many :friends, through: :friendships, source: :friend
   has_many :inverse_friends, through: :inverse_friendships, source: :user
+  has_many :settlements_paid, class_name: "Settlement", foreign_key: :payer_id, dependent: :destroy
+  has_many :settlements_received, class_name: "Settlement", foreign_key: :payee_id, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
@@ -57,7 +60,18 @@ class User < ApplicationRecord
       current_user_balance: current_user_balance,
       # todo: this will fail if first expense and other expenses has different currencies
       # but this is just a temporary solution to get the currency
-      currency: expenses.first.currency
+      currency: expenses.first&.currency
     }
+  end
+
+  def friend_ids_with_self
+    all_friends.ids + [ id ]
+  end
+
+  # Expenses this user created, paid for, or has a share in.
+  def visible_expenses
+    Expense.where(user_id: id)
+      .or(Expense.where(payer_id: id))
+      .or(Expense.where(id: ExpensesUser.where(user_id: id).select(:expense_id)))
   end
 end
