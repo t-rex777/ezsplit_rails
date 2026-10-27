@@ -11,6 +11,7 @@ import 'screens/group_detail/group_detail_screen.dart';
 import 'screens/groups/group_settings_screen.dart';
 import 'screens/groups/groups_screen.dart';
 import 'screens/groups/new_group_screen.dart';
+import 'screens/home/dashboard_screen.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/shell.dart';
 import 'state/session.dart';
@@ -84,7 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/home',
-                builder: (_, _) => const PlaceholderScreen(title: 'Home'),
+                builder: (_, _) => const DashboardScreen(),
               ),
             ],
           ),

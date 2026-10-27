@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/api_client.dart';
+import 'package:ezsplit_mobile/data/summary_repository.dart';
 import 'package:ezsplit_mobile/state/offline.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -120,6 +121,10 @@ void main() {
         tester,
         FakeAuthRepository(current: testUser),
         client: client,
+        // Keeps the dashboard's own call from touching the offline flag.
+        extraOverrides: [
+          summaryRepositoryProvider.overrideWithValue(FakeSummaryRepository()),
+        ],
       );
       expect(find.text("You're offline. Changes won't save."), findsNothing);
 

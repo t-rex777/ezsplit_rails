@@ -8,6 +8,7 @@ import 'package:ezsplit_mobile/data/groups_repository.dart';
 import 'package:ezsplit_mobile/data/jsonapi.dart' show Page;
 import 'package:ezsplit_mobile/data/models.dart';
 import 'package:ezsplit_mobile/data/settlements_repository.dart';
+import 'package:ezsplit_mobile/data/summary_repository.dart';
 import 'package:ezsplit_mobile/data/users_repository.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
@@ -148,6 +149,7 @@ List<Override> repoOverrides(
 ) => [
   groupsRepositoryProvider.overrideWithValue(groups),
   usersRepositoryProvider.overrideWithValue(users),
+  summaryRepositoryProvider.overrideWithValue(FakeSummaryRepository()),
 ];
 
 const milisha = User(
@@ -363,3 +365,36 @@ List<Override> detailOverrides({
     categories ?? FakeCategoriesRepository(),
   ),
 ];
+
+MonthlySummary emptySummary(String month) => MonthlySummary(
+  month: month,
+  mySharePaise: 0,
+  youOwePaise: 0,
+  owedToYouPaise: 0,
+  categories: const [],
+  otherCurrencies: const [],
+);
+
+class FakeSummaryRepository extends SummaryRepository {
+  FakeSummaryRepository({Map<String, MonthlySummary>? byMonth})
+    : byMonth = byMonth ?? {},
+      super(dummyClient());
+
+  /// Keyed "2026-10". Months not listed come back empty.
+  final Map<String, MonthlySummary> byMonth;
+  final List<String> requested = [];
+
+  /// When set, month() waits on it, so tests can hold a load open.
+  Completer<void>? gate;
+  Object? error;
+
+  @override
+  Future<MonthlySummary> month(DateTime month) async {
+    final key =
+        '${month.year.toString().padLeft(4, '0')}-${month.month.toString().padLeft(2, '0')}';
+    requested.add(key);
+    await gate?.future;
+    if (error != null) throw error!;
+    return byMonth[key] ?? emptySummary(key);
+  }
+}
