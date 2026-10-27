@@ -1,10 +1,10 @@
 class GroupsController < ApplicationController
-  before_action :set_group, only: %i[ show ]
+  before_action :set_group, only: %i[ show totals ]
   before_action :set_owned_group, only: %i[ update destroy add_members ]
 
   # GET /groups
   def index
-    pagy_obj, @groups = pagy(current_user.groups)
+    pagy_obj, @groups = pagy(current_user.groups.select("groups.*", "#{Group::ACTIVITY_SQL} AS activity_at").order("activity_at DESC", id: :desc))
     options = {
       include: [ :users ]
     }
@@ -14,6 +14,26 @@ class GroupsController < ApplicationController
   # GET /groups/1
   def show
      render json: GroupSerializer.new(@group, include: [ :users ]).serializable_hash.to_json
+  end
+
+  # GET /groups/1/totals
+  # INR totals for the whole group: spent, my share, what I paid, by category, and by payer.
+  def totals
+    expenses = @group.expenses.where(currency: SummariesController::CURRENCY)
+    my_share = ExpensesUser.where(expense_id: expenses.select(:id), user_id: current_user.id).sum(:amount)
+    paid = expenses.group(:payer_id).sum(:amount).sort_by { |payer_id, amount| [ -amount, payer_id ] }
+    payers = User.where(id: paid.map(&:first)).index_by(&:id)
+
+    render json: {
+      total_spent: expenses.sum(:amount).to_d.to_s("F"),
+      my_share: my_share.to_d.to_s("F"),
+      i_paid: expenses.where(payer_id: current_user.id).sum(:amount).to_d.to_s("F"),
+      categories: SpendingByCategory.rows(expenses.pluck(:category_id, :amount), current_user),
+      paid_by: paid.map do |payer_id, amount|
+        payer = payers[payer_id]
+        { user_id: payer_id, first_name: payer.first_name, last_name: payer.last_name, amount: amount.to_d.to_s("F") }
+      end
+    }
   end
 
   # POST /groups

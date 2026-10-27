@@ -2,6 +2,8 @@ require 'rails_helper'
 
 RSpec.describe "UserRegisters", type: :request do
   describe "POST /user_register" do
+    let!(:invite) { create(:invitation, email: "test@test.com") }
+
     it "creates a new user with valid params" do
       user_params = {
         user: {
@@ -12,7 +14,8 @@ RSpec.describe "UserRegisters", type: :request do
           last_name: "Test",
           phone: "9876543210",
           date_of_birth: "2000-05-01"
-        }
+        },
+        token: invite.token
       }
       post user_registers_url, params: user_params
       expect(response).to have_http_status(:ok)
@@ -28,7 +31,8 @@ RSpec.describe "UserRegisters", type: :request do
           last_name: "Test",
           phone: "9876543210",
           date_of_birth: "2000-05-01"
-        }
+        },
+        token: invite.token
       }
 
       expect {
@@ -95,7 +99,7 @@ RSpec.describe "UserRegisters", type: :request do
         expect(inviter.friends).to include(new_user)
       end
 
-      it "still creates user even if invitation acceptance fails" do
+      it "refuses sign-up when the token is invalid" do
         user_params = {
           user: {
             email_address: "newuser@test.com",
@@ -111,10 +115,9 @@ RSpec.describe "UserRegisters", type: :request do
 
         expect {
           post user_registers_url, params: user_params
-        }.to change { User.count }.by(1)
-          .and change { Friendship.count }.by(0)
+        }.not_to change { User.count }
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to have_http_status(:unprocessable_entity)
       end
     end
   end

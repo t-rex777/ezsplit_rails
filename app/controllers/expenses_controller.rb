@@ -6,9 +6,7 @@ class ExpensesController < ApplicationController
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    expenses = current_user.visible_expenses.order(expense_date: :desc, id: :desc)
-    expenses = expenses.where(group_id: params[:group_id]) if params[:group_id].present?
-    pagy_obj, @expenses = pagy(expenses)
+    pagy_obj, @expenses = pagy(filtered_expenses)
     options = {
       include: [ :payer, :group, :category, :expenses_users ]
     }
@@ -67,6 +65,25 @@ class ExpensesController < ApplicationController
   end
 
   private
+
+  SORTS = {
+    "newest" => { expense_date: :desc, id: :desc },
+    "oldest" => { expense_date: :asc, id: :asc },
+    "amount_desc" => { amount: :desc, id: :desc },
+    "amount_asc" => { amount: :asc, id: :asc }
+  }.freeze
+
+  def filtered_expenses
+    expenses = current_user.visible_expenses
+    expenses = expenses.where(group_id: params[:group_id]) if params[:group_id].present?
+    expenses = expenses.where("LOWER(expenses.name) LIKE ?", "%#{Expense.sanitize_sql_like(params[:q].downcase)}%") if params[:q].present?
+    expenses = expenses.where(category_id: params[:category_ids]) if params[:category_ids].present?
+    expenses = expenses.where(payer_id: current_user.id) if params[:paid_by] == "me"
+    expenses = expenses.where.not(payer_id: current_user.id) if params[:paid_by] == "others"
+    expenses = expenses.where(expense_date: params[:from]..) if params[:from].present?
+    expenses = expenses.where(expense_date: ..params[:to]) if params[:to].present?
+    expenses.order(SORTS.fetch(params[:sort], SORTS["newest"]))
+  end
 
   def create_expenses_users(expense, shares)
     shares.each do |user_id, amount|
@@ -144,7 +161,7 @@ class ExpensesController < ApplicationController
   end
 
   def expense_params
-    params.require(:expense).permit(:name, :amount, :split_type, :currency, :expense_date, :settled, :payer_id, :group_id, :category_id, distribution: [ :user_id, :amount ])
+    params.require(:expense).permit(:name, :amount, :split_type, :currency, :expense_date, :settled, :payer_id, :group_id, :category_id, :notes, distribution: [ :user_id, :amount ])
   end
 
   # Only the creator can change or delete an expense.

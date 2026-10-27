@@ -8,6 +8,22 @@ class Group < ApplicationRecord
 
   validates :name, presence: true
 
+  # Latest of: the group itself changing, an expense changing, or a settlement being recorded.
+  ACTIVITY_SQL = <<~SQL.squish.freeze
+    MAX(groups.updated_at,
+        COALESCE((SELECT MAX(expenses.updated_at) FROM expenses WHERE expenses.group_id = groups.id), groups.updated_at),
+        COALESCE((SELECT MAX(settlements.created_at) FROM settlements WHERE settlements.group_id = groups.id), groups.updated_at))
+  SQL
+
+  def last_activity_at
+    [ updated_at, expenses.maximum(:updated_at), settlements.maximum(:created_at) ].compact.max
+  end
+
+  # The user's net in this group, per currency. Positive means the group owes them.
+  def net_for(user, currency)
+    BalanceCalculator.for_group(self).fetch([ user.id, currency ], BigDecimal("0"))
+  end
+
   # Get all expenses with includes for better performance
   def all_expenses
     expenses.includes(:payer, :category, :expenses_users)

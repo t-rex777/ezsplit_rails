@@ -43,7 +43,10 @@ RSpec.describe "Groups", type: :request do
           total_amount: "0.0",
           current_user_balance: { total_paid: "0.0", total_owed: "0.0", net_balance: "0.0", status: "owes" },
           currency: nil
-        }
+        },
+        owner_id: user1.id,
+        my_net: "0.0",
+        last_activity_at: Group.last.last_activity_at.as_json
         }.with_indifferent_access)
     end
   end
@@ -69,7 +72,10 @@ RSpec.describe "Groups", type: :request do
           total_amount: "0.0",
           current_user_balance: { total_paid: "0.0", total_owed: "0.0", net_balance: "0.0", status: "owes" },
           currency: nil
-        }
+        },
+        owner_id: user1.id,
+        my_net: "0.0",
+        last_activity_at: Group.last.last_activity_at.as_json
         }.with_indifferent_access)
     end
   end

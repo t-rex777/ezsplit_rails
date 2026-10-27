@@ -7,11 +7,17 @@ Rails.application.routes.draw do
   resources :expenses
   resources :settlements, only: %i[ index create destroy ]
   resources :balances, only: %i[ index ]
+  resource :summary, only: %i[ show ]
+  resource :me, only: %i[ show update ], controller: "me"
   resources :invitations,  only: %i[ create update ]
+
+  # Invite email landing page; hands the invite to the mobile app.
+  get "register", to: "registrations#show"
 
   resources :groups do
     post :add_members, on: :member
     get :balances, on: :member, to: "balances#group"
+    get :totals, on: :member
     resources :group_memberships
   end
 

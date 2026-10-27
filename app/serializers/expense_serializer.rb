@@ -1,6 +1,7 @@
 class ExpenseSerializer
   include JSONAPI::Serializer
-  attributes :name, :amount, :split_type, :currency, :expense_date, :settled, :created_at, :updated_at, :current_user_amount
+  attributes :name, :amount, :split_type, :currency, :expense_date, :settled, :created_at, :updated_at, :current_user_amount, :notes
+  attribute(:creator_id) { |expense| expense.user_id }
   belongs_to :payer, serializer: UserSerializer
   belongs_to :group, serializer: GroupSerializer
   belongs_to :category, serializer: CategorySerializer

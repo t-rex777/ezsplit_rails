@@ -51,13 +51,13 @@ RSpec.describe "Friends and privacy", type: :request do
       expect(invitation.reload).to be_accepted
     end
 
-    it "still signs up when the invitation was for someone else" do
+    it "refuses sign-up when the invitation was for someone else" do
       invitation = create(:invitation, inviter: alice, email: "someone@example.com")
 
       post user_registers_url, params: { token: invitation.token, user: user_params }
 
-      expect(response).to have_http_status(:ok)
-      expect(User.find_by(email_address: "dave@example.com").friends).to be_empty
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(User.find_by(email_address: "dave@example.com")).to be_nil
     end
   end
 end

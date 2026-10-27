@@ -20,7 +20,8 @@ class User < ApplicationRecord
   normalizes :email_address, with: ->(e) { e.strip.downcase }
 
   validates :email_address, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
-  validates :password, presence: true, length: { minimum: 6 }
+  # has_secure_password already requires a password on create; this lets profile updates skip it.
+  validates :password, length: { minimum: 6 }, allow_nil: true
   validates :first_name, :last_name, :phone, :date_of_birth, presence: true
 
   def full_name

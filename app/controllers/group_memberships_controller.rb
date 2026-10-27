@@ -64,6 +64,12 @@ class GroupMembershipsController < ApplicationController
       return
     end
 
+    leave_error = leave_error_for(@group_membership)
+    if leave_error
+      render json: { status: :error, errors: [ leave_error ], message: "Failed to leave group" }, status: :unprocessable_entity
+      return
+    end
+
     respond_to do |format|
       if @group_membership.update(left_at: Date.current)
         format.json do
@@ -96,6 +102,14 @@ class GroupMembershipsController < ApplicationController
   end
 
   private
+
+  # Leaving with money still open would hide a debt, and a group always needs its owner.
+  def leave_error_for(membership)
+    return "The owner can't leave. Delete the group instead." if @group.user_id == membership.user_id
+
+    open_balance = BalanceCalculator.for_group(@group).any? { |(user_id, _currency), amount| user_id == membership.user_id && !amount.zero? }
+    "Settle up before leaving" if open_balance
+  end
 
   def group_membership_params
     params.require(:group_membership).permit(:user_id)
