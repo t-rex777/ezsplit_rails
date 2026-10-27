@@ -4,6 +4,7 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'api_error.dart';
+import 'jsonapi.dart' show unexpectedResponseMessage;
 
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -58,6 +59,11 @@ class ApiClient {
     Object? body,
     Map<String, dynamic>? query,
   }) async {
+    // A relative path keeps every request on baseUrl, so the session cookie
+    // never goes to another host.
+    if (!path.startsWith('/') || path.startsWith('//')) {
+      throw ArgumentError.value(path, 'path', 'must be a path starting with /');
+    }
     Response<dynamic> response;
     try {
       response = await _dio.request<dynamic>(
@@ -111,24 +117,29 @@ class ApiClient {
       final message = data['message'];
       if (message is String && message.isNotEmpty) return message;
     }
-    return connectionErrorMessage;
+    // The server answered, but not in its error shape (an HTML 500, no body).
+    return unexpectedResponseMessage;
   }
 }
+
+BaseOptions apiBaseOptions(String baseUrl) => BaseOptions(
+  baseUrl: baseUrl,
+  headers: apiHeaders,
+  followRedirects: false,
+  validateStatus: (status) => status != null && status < 400,
+  connectTimeout: const Duration(seconds: 15),
+  sendTimeout: const Duration(seconds: 30),
+  receiveTimeout: const Duration(seconds: 30),
+);
 
 Future<ApiClient> createApiClient({
   required String baseUrl,
   void Function()? onUnauthorized,
 }) async {
-  final dir = await getApplicationDocumentsDirectory();
+  // Support, not Documents: iOS backs Documents up to iCloud.
+  final dir = await getApplicationSupportDirectory();
   final jar = PersistCookieJar(storage: FileStorage('${dir.path}/.cookies/'));
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: baseUrl,
-      headers: apiHeaders,
-      followRedirects: false,
-      validateStatus: (status) => status != null && status < 400,
-    ),
-  );
+  final dio = Dio(apiBaseOptions(baseUrl));
   dio.interceptors.add(CookieManager(jar));
   return ApiClient(dio, cookieJar: jar, onUnauthorized: onUnauthorized);
 }

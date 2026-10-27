@@ -191,4 +191,109 @@ void main() {
       expect((offline, online), (1, 1));
     },
   );
+
+  group('timeouts', () {
+    test('the real client sets connect, send and receive timeouts', () {
+      final o = apiBaseOptions('http://test');
+      expect(o.connectTimeout, const Duration(seconds: 15));
+      expect(o.sendTimeout, const Duration(seconds: 30));
+      expect(o.receiveTimeout, const Duration(seconds: 30));
+    });
+
+    for (final type in [
+      DioExceptionType.connectionTimeout,
+      DioExceptionType.sendTimeout,
+      DioExceptionType.receiveTimeout,
+    ]) {
+      test('$type gives the connection message and marks offline', () async {
+        var offline = 0;
+        var online = 0;
+        client.onOffline = () => offline++;
+        client.onOnline = () => online++;
+        adapter.onGet(
+          '/slow',
+          (s) => s.throws(
+            0,
+            DioException(
+              requestOptions: RequestOptions(path: '/slow'),
+              type: type,
+            ),
+          ),
+        );
+        await expectLater(
+          client.get('/slow'),
+          throwsA(
+            isA<ApiError>()
+                .having((e) => e.status, 'status', null)
+                .having((e) => e.message, 'message', connectionErrorMessage),
+          ),
+        );
+        expect((offline, online), (1, 0));
+      });
+    }
+  });
+
+  group('a response that is not the error shape', () {
+    for (final (name, body) in [
+      ('an HTML page', '<html>Internal Server Error</html>'),
+      ('an empty body', ''),
+    ]) {
+      test('$name on a 500 says something went wrong, not offline', () async {
+        var offline = 0;
+        var online = 0;
+        client.onOffline = () => offline++;
+        client.onOnline = () => online++;
+        adapter.onGet('/boom', (s) => s.reply(500, body));
+        await expectLater(
+          client.get('/boom'),
+          throwsA(
+            isA<ApiError>()
+                .having((e) => e.status, 'status', 500)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'Something went wrong. Try again.',
+                ),
+          ),
+        );
+        expect((offline, online), (0, 1));
+      });
+    }
+  });
+
+  group('paths', () {
+    test(
+      'absolute URLs and paths without a leading slash are refused',
+      () async {
+        for (final path in [
+          'http://evil.example/groups',
+          'https://evil.example',
+          '//evil.example/groups',
+          'groups',
+          '',
+        ]) {
+          await expectLater(
+            client.get(path),
+            throwsArgumentError,
+            reason: path,
+          );
+          await expectLater(
+            client.post(path),
+            throwsArgumentError,
+            reason: path,
+          );
+          await expectLater(
+            client.patch(path),
+            throwsArgumentError,
+            reason: path,
+          );
+          await expectLater(
+            client.delete(path),
+            throwsArgumentError,
+            reason: path,
+          );
+        }
+      },
+    );
+  });
 }
