@@ -4,8 +4,10 @@ name: RSpec Tests
 on:
   push:
     branches: [main, dev]
+    paths: ["api/**", ".github/workflows/rspec.yml"]
   pull_request:
     branches: [main, dev]
+    paths: ["api/**", ".github/workflows/rspec.yml"]
 
 jobs:
   test:
@@ -13,6 +15,10 @@ jobs:
 
     env:
       RAILS_ENV: test
+
+    defaults:
+      run:
+        working-directory: api
 
     steps:
       - name: Checkout code
@@ -22,6 +28,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2.2" # Match .ruby-version file
+          working-directory: api
           bundler-cache: true # This runs 'bundle install' and caches gems
 
       - name: Set up database
