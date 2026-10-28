@@ -32,6 +32,23 @@ void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   group('BrutalButton', () {
+    testWidgets('card-coloured button uses ink text in dark mode', (t) async {
+      await t.pumpWidget(
+        host(
+          BrutalButton(
+            label: 'Cancel',
+            color: EzColors.dark.card,
+            onPressed: () {},
+          ),
+          b: Brightness.dark,
+        ),
+      );
+      expect(
+        t.widget<Text>(find.text('Cancel')).style?.color,
+        EzColors.dark.ink,
+      );
+    });
+
     testWidgets('disabled has no shadow and a grey fill', (t) async {
       await t.pumpWidget(host(const BrutalButton(label: 'Save')));
       final f = find.byType(BrutalButton);

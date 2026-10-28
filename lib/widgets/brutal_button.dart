@@ -23,9 +23,11 @@ class BrutalButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ez;
     final enabled = onPressed != null;
-    const textColor = onAccent;
+    final fill = enabled ? (color ?? c.amber) : EzColors.disabled;
+    // The card fill is dark in dark mode, so it needs ink text; accents stay dark-on-light.
+    final textColor = fill == c.card ? c.ink : onAccent;
     return BrutalSurface(
-      color: enabled ? (color ?? c.amber) : EzColors.disabled,
+      color: fill,
       borderWidth: kCardBorder,
       radius: kCardRadius,
       showShadow: enabled,

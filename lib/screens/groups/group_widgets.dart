@@ -110,7 +110,7 @@ class GroupIconPicker extends StatelessWidget {
             isButton: true,
             semanticLabel: 'Icon ${name.replaceAll('_', ' ')}',
             onTap: () => onChanged(name),
-            constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
+            constraints: const BoxConstraints.tightFor(width: 52, height: 52),
             child: Center(
               child: CategoryIcon(name, name == selected ? onAccent : c.ink),
             ),
