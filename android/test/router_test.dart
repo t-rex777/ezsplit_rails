@@ -47,8 +47,9 @@ void main() {
     final c = await pumpApp(tester, repo, settle: false);
     expect(locationOf(c), '/splash');
     expect(find.text('Log in'), findsNothing);
-    expect(find.bySemanticsLabel('Loading ezsplit'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading EzSplit'), findsOneWidget);
+    expect(find.text('EzSplit'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
     gate.complete();
     await tester.pumpAndSettle();

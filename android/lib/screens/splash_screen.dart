@@ -14,7 +14,7 @@ class SplashScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Semantics(
-          label: 'Loading ezsplit',
+          label: 'Loading EzSplit',
           excludeSemantics: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -37,15 +37,26 @@ class SplashScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'ezsplit',
+                'EzSplit',
                 style: text.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 28),
-              SizedBox.square(
-                dimension: 28,
-                child: CircularProgressIndicator(color: c.ink, strokeWidth: 3),
+              Container(
+                width: 160,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: c.line, width: kCardBorder),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    minHeight: 8,
+                    color: c.amber,
+                    backgroundColor: c.card,
+                  ),
+                ),
               ),
             ],
           ),
