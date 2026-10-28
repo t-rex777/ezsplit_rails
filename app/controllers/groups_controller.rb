@@ -1,6 +1,7 @@
 class GroupsController < ApplicationController
   before_action :set_group, only: %i[ show totals ]
   before_action :set_owned_group, only: %i[ update destroy add_members ]
+  before_action :require_friend_members, only: %i[ create update add_members ]
 
   # GET /groups
   def index
@@ -104,6 +105,11 @@ class GroupsController < ApplicationController
       render json: {
         errors: [ "Group not found" ]
       }, status: :not_found
+    end
+
+    def require_friend_members
+      user_ids = params.dig(:group, :user_ids)
+      render_friends_only_error if user_ids.present? && !only_friends?(user_ids, @group)
     end
 
     def group_params

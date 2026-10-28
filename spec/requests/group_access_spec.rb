@@ -6,6 +6,11 @@ RSpec.describe "Group access", type: :request do
   let!(:outsider) { create(:user) }
   let!(:group) { create(:group, user: owner, user_ids: [ owner.id, member.id ]) }
 
+  before do
+    create(:friendship, user: owner, friend: member)
+    create(:friendship, user: owner, friend: outsider)
+  end
+
   describe "groups" do
     it "lets a member see a group they joined" do
       sign_in(member)

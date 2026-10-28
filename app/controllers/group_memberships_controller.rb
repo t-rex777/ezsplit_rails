@@ -1,6 +1,7 @@
 class GroupMembershipsController < ApplicationController
   before_action :set_group
   before_action :set_group_membership, only: %i[show destroy]
+  before_action :require_friend_member, only: :create
 
   def new
     @group_membership = @group.group_memberships.new
@@ -109,6 +110,10 @@ class GroupMembershipsController < ApplicationController
 
     open_balance = BalanceCalculator.for_group(@group).any? { |(user_id, _currency), amount| user_id == membership.user_id && !amount.zero? }
     "Settle up before leaving" if open_balance
+  end
+
+  def require_friend_member
+    render_friends_only_error unless only_friends?(group_membership_params[:user_id], @group)
   end
 
   def group_membership_params

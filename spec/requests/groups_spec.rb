@@ -7,6 +7,7 @@ RSpec.describe "Groups", type: :request do
   let!(:user4) { create(:user, email_address: "test4@example.com") }
 
   before do
+    create(:friendship, user: user1, friend: user2)
     post session_url, params: { email_address: user1.email_address, password: user1.password }
   end
 
