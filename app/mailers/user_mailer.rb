@@ -23,4 +23,9 @@ class UserMailer < ApplicationMailer
 
     mail(to: @invited_email, subject: "You're invited to join #{@app_name}!")
   end
+
+  def friend_request_email(invitation)
+    @inviter = invitation.inviter
+    mail(to: invitation.email, subject: "#{@inviter.full_name} wants to add you as a friend on EZSplit")
+  end
 end

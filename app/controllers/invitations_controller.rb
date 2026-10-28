@@ -1,52 +1,65 @@
 class InvitationsController < ApplicationController
   allow_unauthenticated_access only: %i[update]
   before_action :set_invitation, only: [ :update ]
+  before_action :set_received_invitation, only: %i[ accept decline ]
   before_action :set_invited_user, only: [ :create, :update ]
 
+  # GET /invitations
+  # Friend requests waiting for me, newest first.
+  def index
+    invitations = Invitation.pending.where("expires_at > ?", Time.current)
+                            .where(invited_user_id: current_user.id)
+                            .or(Invitation.pending.where("expires_at > ?", Time.current)
+                                          .where("lower(email) = ?", current_user.email_address.downcase))
+                            .includes(:inviter).order(created_at: :desc, id: :desc)
 
-  # if user present -> just create an invitation and add to friends list
-  # if not present -> TBD
+    render json: { data: invitations.map { |invitation| invitation_json(invitation) } }
+  end
 
   # POST /invitations
+  # An existing user gets a friend request to accept; the reply is the same as for a new user,
+  # so it never reveals whether an account exists.
   def create
-    if @invited_user.present?
-      if @invited_user.friends.include?(current_user)
-        render json: { message: "#{@invited_user.full_name} is already a friend." }
-        return
-      end
-
-      ActiveRecord::Base.transaction do
-        invitation_params = {
-          email: create_invitation_params[:email_address],
-          inviter: current_user,
-          invited_user: @invited_user,
-          status: :accepted,
-          accepted_at: Time.now
-        }
-
-        @invitation = current_user.invitations.new(invitation_params)
-        @invitation.invited_user.friendships.create!(friend: @invitation.inviter)
-        @invitation.inviter.friendships.create!(friend: @invitation.invited_user)
-      end
-
-      if @invitation.save
-        render json: { message: "#{@invited_user.full_name} added as friend." }, status: :created
-        return
-      end
+    if @invited_user&.friends&.include?(current_user)
+      render json: { message: "#{@invited_user.full_name} is already a friend." }
+      return
     end
 
-    @invitation = current_user.invitations.new(
-      email: create_invitation_params[:email_address],
-      inviter: current_user
-    )
+    email = create_invitation_params[:email_address]
+    if @invited_user.present? && pending_invitation_to?(email)
+      render json: { message: "Invitation sent successfully." }, status: :created
+      return
+    end
+
+    @invitation = current_user.invitations.new(email: email, invited_user: @invited_user)
 
     if @invitation.save
-      # Send invitation email
-      UserMailer.invitation_email(@invitation).deliver_now
+      if @invited_user.present?
+        UserMailer.friend_request_email(@invitation).deliver_now
+      else
+        UserMailer.invitation_email(@invitation).deliver_now
+      end
       render json: { message: "Invitation sent successfully." }, status: :created
     else
       render json: { errors: @invitation.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  # POST /invitations/:id/accept
+  def accept
+    ActiveRecord::Base.transaction do
+      Friendship.find_or_create_by!(user: current_user, friend: @invitation.inviter)
+      Friendship.find_or_create_by!(user: @invitation.inviter, friend: current_user)
+      @invitation.update!(invited_user: current_user, status: :accepted, accepted_at: Time.current)
+    end
+
+    render json: { message: "You are now friends with #{@invitation.inviter.full_name}." }
+  end
+
+  # POST /invitations/:id/decline
+  def decline
+    @invitation.update!(invited_user: current_user, status: :rejected)
+    render json: { message: "Invitation declined." }
   end
 
   # PUT /invitations/:id
@@ -80,6 +93,33 @@ class InvitationsController < ApplicationController
 
   def set_invitation
     @invitation = Invitation.find_by(id: params[:id])
+  end
+
+  def set_received_invitation
+    @invitation = Invitation.find_by(id: params[:id])
+
+    unless @invitation && (@invitation.invited_user_id == current_user.id || @invitation.sent_to?(current_user))
+      render json: { errors: [ "Invitation not found." ] }, status: :not_found
+      return
+    end
+
+    return if @invitation.pending? && !@invitation.expired?
+
+    render json: { errors: [ "This invitation is no longer valid." ] }, status: :unprocessable_entity
+  end
+
+  def pending_invitation_to?(email)
+    current_user.invitations.pending.where("expires_at > ?", Time.current)
+                .exists?([ "lower(email) = ?", email.to_s.strip.downcase ])
+  end
+
+  def invitation_json(invitation)
+    inviter = invitation.inviter
+    {
+      id: invitation.id,
+      created_at: invitation.created_at,
+      inviter: inviter.slice(:id, :first_name, :last_name, :email_address)
+    }
   end
 
   def create_invitation_params

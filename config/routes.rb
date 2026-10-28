@@ -9,7 +9,10 @@ Rails.application.routes.draw do
   resources :balances, only: %i[ index ]
   resource :summary, only: %i[ show ]
   resource :me, only: %i[ show update ], controller: "me"
-  resources :invitations,  only: %i[ create update ]
+  resources :invitations, only: %i[ index create update ] do
+    post :accept, on: :member
+    post :decline, on: :member
+  end
 
   # Invite email landing page; hands the invite to the mobile app.
   get "register", to: "registrations#show"

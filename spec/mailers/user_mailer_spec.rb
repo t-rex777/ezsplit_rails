@@ -206,4 +206,26 @@ RSpec.describe UserMailer, type: :mailer do
       expect { UserMailer.invitation_email(invitation).deliver_later }.to have_enqueued_mail(UserMailer, :invitation_email)
     end
   end
+
+  describe "#friend_request_email" do
+    let(:inviter) { create(:user, first_name: "Riya", last_name: "S") }
+    let(:invited) { create(:user, email_address: "neha@example.com") }
+    let(:invitation) { create(:invitation, inviter: inviter, email: invited.email_address, invited_user: invited) }
+    let(:mail) { UserMailer.friend_request_email(invitation) }
+
+    it "is addressed to the invited user" do
+      expect(mail.to).to eq([ "neha@example.com" ])
+      expect(mail.subject).to eq("Riya S wants to add you as a friend on EZSplit")
+    end
+
+    it "says who sent the request in both parts" do
+      text_part = mail.body.parts.find { |part| part.content_type.include?("text/plain") }
+      html_part = mail.body.parts.find { |part| part.content_type.include?("text/html") }
+
+      [ text_part, html_part ].each do |part|
+        expect(part.body.encoded).to include("Riya S wants to add you as a friend on ezsplit.")
+        expect(part.body.encoded).to include("Open the app to accept or decline.")
+      end
+    end
+  end
 end
