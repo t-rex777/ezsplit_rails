@@ -92,6 +92,22 @@ cd android && flutter run
 
 The app calls `http://localhost:3100` by default. Change it with `--dart-define=API_BASE_URL=...`. Release builds refuse any address that is not `https`.
 
+### Test on phones over Wi-Fi
+
+Run the API on your Mac so other devices on the same Wi-Fi can reach it. Find the Mac's address with `ipconfig getifaddr en0`; the examples use `192.168.1.4`.
+
+```bash
+cd api && APP_HOST=192.168.1.4 APP_PORT=3100 mise exec ruby@3.2.2 -- bin/rails server -p 3100 -b 0.0.0.0
+```
+
+`APP_HOST` and `APP_PORT` set the address used in invite emails. Then build a LAN APK, which may use `http` to a private address only:
+
+```bash
+cd android && EZSPLIT_LAN_HTTP=1 flutter build apk --release --dart-define=API_BASE_URL=http://192.168.1.4:3100 --dart-define=ALLOW_LAN_HTTP=true
+```
+
+The session cookie travels unencrypted over the Wi-Fi in this build, so use it only on a network you trust. If the Mac's address changes, rebuild. Normal release builds stay https-only.
+
 ## Tests
 
 ```bash

@@ -15,12 +15,32 @@ const String apiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:3100',
 );
 
+/// Set only for LAN test builds, which talk to a server on the same Wi-Fi.
+const bool allowLanHttp = bool.fromEnvironment('ALLOW_LAN_HTTP');
+
 /// Throws in a release build unless [url] is https, so the session cookie never
-/// travels in clear text.
-void checkBaseUrl(String url, {required bool release}) {
-  if (release && Uri.tryParse(url)?.scheme != 'https') {
-    throw StateError('API_BASE_URL must use https in a release build: $url');
+/// travels in clear text. A LAN build may also use http to a private address.
+void checkBaseUrl(
+  String url, {
+  required bool release,
+  bool allowLanHttp = false,
+}) {
+  final uri = Uri.tryParse(url);
+  if (!release || uri?.scheme == 'https') return;
+  if (allowLanHttp && uri?.scheme == 'http' && _isPrivateIPv4(uri!.host)) {
+    return;
   }
+  throw StateError('API_BASE_URL must use https in a release build: $url');
+}
+
+bool _isPrivateIPv4(String host) {
+  final parts = host.split('.');
+  if (parts.length != 4) return false;
+  final n = parts.map(int.tryParse).toList();
+  if (n.any((x) => x == null || x < 0 || x > 255)) return false;
+  return n[0] == 10 ||
+      (n[0] == 172 && n[1]! >= 16 && n[1]! <= 31) ||
+      (n[0] == 192 && n[1] == 168);
 }
 
 const Map<String, String> apiHeaders = {

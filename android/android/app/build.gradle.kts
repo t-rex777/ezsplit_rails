@@ -35,6 +35,9 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // http is off in release; EZSPLIT_LAN_HTTP=1 turns it on for a same-Wi-Fi test build.
+        manifestPlaceholders["usesCleartextTraffic"] =
+            (System.getenv("EZSPLIT_LAN_HTTP") == "1").toString()
     }
 
     signingConfigs {
@@ -49,6 +52,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+        }
         release {
             // Without key.properties, fall back to debug keys so local `flutter run --release` works.
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")

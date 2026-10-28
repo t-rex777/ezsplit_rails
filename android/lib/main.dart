@@ -8,7 +8,7 @@ import 'state/session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  checkBaseUrl(apiBaseUrl, release: kReleaseMode);
+  checkBaseUrl(apiBaseUrl, release: kReleaseMode, allowLanHttp: allowLanHttp);
   final client = await createApiClient(baseUrl: apiBaseUrl);
   runApp(
     ProviderScope(

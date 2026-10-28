@@ -276,6 +276,31 @@ void main() {
     test('debug with http is fine', () {
       checkBaseUrl('http://localhost:3100', release: false);
     });
+
+    test('LAN build allows http to a private Wi-Fi address', () {
+      for (final url in [
+        'http://192.168.1.4:3100',
+        'http://10.0.0.7:3100',
+        'http://172.20.1.2:3100',
+      ]) {
+        checkBaseUrl(url, release: true, allowLanHttp: true);
+      }
+    });
+
+    test('LAN build still refuses http to public hosts', () {
+      for (final url in [
+        'http://api.example.com',
+        'http://8.8.8.8:3100',
+        'http://172.32.0.1',
+        'http://192.168.1.4.evil.com',
+      ]) {
+        expect(
+          () => checkBaseUrl(url, release: true, allowLanHttp: true),
+          throwsStateError,
+          reason: url,
+        );
+      }
+    });
   });
 
   group('paths', () {
