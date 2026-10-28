@@ -1,6 +1,4 @@
 class UserMailer < ApplicationMailer
-  default from: "notifications@eszplit.com"
-
   def welcome_email(user)
     @user = user
     @app_name = "EZSplit"

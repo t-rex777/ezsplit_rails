@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs the API so phones on the same Wi-Fi can reach it, with settings from .env.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
+export APP_HOST="${APP_HOST:-$(ipconfig getifaddr en0)}"
+export APP_PORT="${APP_PORT:-3100}"
+if [ -n "${SMTP_ADDRESS:-}" ]; then mail="real email via $SMTP_ADDRESS"; else mail="email preview on this Mac"; fi
+echo "API at http://$APP_HOST:$APP_PORT ($mail)"
+exec bin/rails server -p "$APP_PORT" -b 0.0.0.0

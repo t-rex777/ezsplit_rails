@@ -8,7 +8,7 @@ RSpec.describe UserMailer, type: :mailer do
     it "renders the headers" do
       expect(mail.subject).to eq("Welcome to EZSplit!")
       expect(mail.to).to eq([ user.email_address ])
-      expect(mail.from).to eq([ "notifications@eszplit.com" ])
+      expect(mail.from).to eq([ "notifications@ezsplit.com" ])
     end
 
     it "renders the body" do
@@ -103,7 +103,7 @@ RSpec.describe UserMailer, type: :mailer do
     it "renders the headers" do
       expect(mail.subject).to eq("You're invited to join EZSplit!")
       expect(mail.to).to eq([ invitation.email ])
-      expect(mail.from).to eq([ "notifications@eszplit.com" ])
+      expect(mail.from).to eq([ "notifications@ezsplit.com" ])
     end
 
     it "renders the body" do
