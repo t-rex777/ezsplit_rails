@@ -125,6 +125,22 @@ void main() {
       expect(locationOf(c), '/profile/details');
     });
 
+    testWidgets('Invite a friend sends an invite and confirms it', (
+      tester,
+    ) async {
+      final users = FakeUsersRepository();
+      await pumpProfile(tester, users: users);
+      await tester.tap(find.text('Invite a friend'));
+      await tester.pumpAndSettle();
+      expect(find.text('Invite by email'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'sam@example.com');
+      await tester.pump();
+      await tester.tap(find.text('Send invite'));
+      await tester.pumpAndSettle();
+      expect(users.invited, ['sam@example.com']);
+      expect(find.text('Invite sent to sam@example.com.'), findsOneWidget);
+    });
+
     testWidgets('My categories opens the list', (tester) async {
       final c = await pumpProfile(tester);
       await tester.tap(find.text('My categories'));

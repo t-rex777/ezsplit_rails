@@ -87,6 +87,21 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             _NavRow(
+              icon: Symbols.person_add,
+              label: 'Invite a friend',
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final toast = await showInviteSheet(
+                  context,
+                  sentMessage: (email) => 'Invite sent to $email.',
+                );
+                if (toast != null) {
+                  messenger.showSnackBar(SnackBar(content: Text(toast)));
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            _NavRow(
               icon: Symbols.category,
               label: 'My categories',
               onTap: () => context.go('/profile/categories'),

@@ -122,15 +122,23 @@ class GroupIconPicker extends StatelessWidget {
 
 /// Sends a friend invite. Returns the toast to show, or null if dismissed.
 /// An invite only makes the person a friend; it never adds them to a group.
-Future<String?> showInviteSheet(BuildContext context) =>
-    showBrutalSheet<String>(
-      context,
-      title: 'Invite by email',
-      child: const _InviteForm(),
-    );
+/// [sentMessage] words the toast for a new invite; the default suits New group.
+Future<String?> showInviteSheet(
+  BuildContext context, {
+  String Function(String email)? sentMessage,
+}) => showBrutalSheet<String>(
+  context,
+  title: 'Invite by email',
+  child: _InviteForm(sentMessage: sentMessage ?? _groupSentMessage),
+);
+
+String _groupSentMessage(String email) =>
+    'Invite sent. Add ${email.split('@').first} to the group once they join.';
 
 class _InviteForm extends ConsumerStatefulWidget {
-  const _InviteForm();
+  const _InviteForm({required this.sentMessage});
+
+  final String Function(String email) sentMessage;
 
   @override
   ConsumerState<_InviteForm> createState() => _InviteFormState();
@@ -164,11 +172,7 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
       if (!mounted) return;
       ref.invalidate(friendsProvider);
       final already = message.toLowerCase().contains('already a friend');
-      Navigator.of(context).pop(
-        already
-            ? message
-            : 'Invite sent. Add ${email.split('@').first} to the group once they join.',
-      );
+      Navigator.of(context).pop(already ? message : widget.sentMessage(email));
     } catch (e) {
       if (!mounted) return;
       setState(() {
