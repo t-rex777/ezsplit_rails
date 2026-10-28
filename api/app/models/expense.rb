@@ -1,0 +1,20 @@
+class Expense < ApplicationRecord
+  belongs_to :payer, class_name: "User", foreign_key: :payer_id
+  belongs_to :group, class_name: "Group", foreign_key: :group_id, optional: true
+  belongs_to :category, class_name: "Category", foreign_key: :category_id
+  has_many :expenses_users, dependent: :destroy
+  belongs_to :user
+
+  SPLIT_TYPES = %w[equal percentage exact].freeze
+  CURRENCIES = %w[INR USD].freeze
+
+  validates :name, :amount, :payer_id, :category_id, :split_type, :currency, :expense_date, presence: true
+  validates :amount, numericality: { greater_than: 0 }, allow_nil: true
+  validates :split_type, inclusion: { in: SPLIT_TYPES, message: "must be equal, percentage or exact" }
+  validates :currency, inclusion: { in: CURRENCIES, message: "must be INR or USD" }
+
+  def current_user_amount
+    amount = expenses_users.where(user_id: Current.user.id).sum(:amount)
+    payer.id == Current.user.id ? amount : -amount
+  end
+end
