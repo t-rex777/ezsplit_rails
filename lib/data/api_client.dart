@@ -1,6 +1,10 @@
+import 'dart:io' show Directory, Platform;
+
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:path_provider/path_provider.dart';
 
 import 'api_error.dart';
@@ -10,6 +14,14 @@ const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:3100',
 );
+
+/// Throws in a release build unless [url] is https, so the session cookie never
+/// travels in clear text.
+void checkBaseUrl(String url, {required bool release}) {
+  if (release && Uri.tryParse(url)?.scheme != 'https') {
+    throw StateError('API_BASE_URL must use https in a release build: $url');
+  }
+}
 
 const Map<String, String> apiHeaders = {
   'Accept': 'application/json',
@@ -138,8 +150,23 @@ Future<ApiClient> createApiClient({
 }) async {
   // Support, not Documents: iOS backs Documents up to iCloud.
   final dir = await getApplicationSupportDirectory();
-  final jar = PersistCookieJar(storage: FileStorage('${dir.path}/.cookies/'));
+  final cookieDir = '${dir.path}/.cookies/';
+  await _excludeFromIosBackup(cookieDir);
+  final jar = PersistCookieJar(storage: FileStorage(cookieDir));
   final dio = Dio(apiBaseOptions(baseUrl));
   dio.interceptors.add(CookieManager(jar));
   return ApiClient(dio, cookieJar: jar, onUnauthorized: onUnauthorized);
+}
+
+Future<void> _excludeFromIosBackup(String path) async {
+  if (!Platform.isIOS) return;
+  try {
+    await Directory(path).create(recursive: true);
+    await const MethodChannel('ezsplit/backup').invokeMethod<void>(
+      'excludeFromBackup',
+      path,
+    );
+  } catch (e) {
+    debugPrint('Could not exclude cookies from backup: $e');
+  }
 }

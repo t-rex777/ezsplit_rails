@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +8,7 @@ import 'state/session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  checkBaseUrl(apiBaseUrl, release: kReleaseMode);
   final client = await createApiClient(baseUrl: apiBaseUrl);
   runApp(
     ProviderScope(

@@ -261,6 +261,23 @@ void main() {
     }
   });
 
+  group('checkBaseUrl', () {
+    test('release with http throws', () {
+      expect(
+        () => checkBaseUrl('http://api.example.com', release: true),
+        throwsStateError,
+      );
+    });
+
+    test('release with https is fine', () {
+      checkBaseUrl('https://api.example.com', release: true);
+    });
+
+    test('debug with http is fine', () {
+      checkBaseUrl('http://localhost:3100', release: false);
+    });
+  });
+
   group('paths', () {
     test(
       'absolute URLs and paths without a leading slash are refused',
