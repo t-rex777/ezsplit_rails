@@ -101,6 +101,8 @@ Future<ProviderContainer> pumpApp(
   ApiClient? client,
   Stream<Uri>? links,
   List<Override> extraOverrides = const [],
+  // The splash spinner never settles; tests that stop on it pass false.
+  bool settle = true,
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   await tester.pumpWidget(
@@ -112,7 +114,7 @@ Future<ProviderContainer> pumpApp(
       child: EzsplitApp(listenForLinks: false, linkStream: links),
     ),
   );
-  await tester.pumpAndSettle();
+  settle ? await tester.pumpAndSettle() : await tester.pump();
   return ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
 }
 

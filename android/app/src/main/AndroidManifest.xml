@@ -4,7 +4,7 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:label="ezsplit_mobile"
+        android:label="ezsplit"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

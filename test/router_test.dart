@@ -44,9 +44,11 @@ void main() {
   testWidgets('waits on a splash while the session loads', (tester) async {
     final gate = Completer<void>();
     final repo = FakeAuthRepository(current: testUser, currentGate: gate);
-    final c = await pumpApp(tester, repo);
+    final c = await pumpApp(tester, repo, settle: false);
     expect(locationOf(c), '/splash');
     expect(find.text('Log in'), findsNothing);
+    expect(find.bySemanticsLabel('Loading ezsplit'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     gate.complete();
     await tester.pumpAndSettle();
