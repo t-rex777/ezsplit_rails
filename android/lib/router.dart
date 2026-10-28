@@ -22,11 +22,24 @@ import 'state/session.dart';
 
 const _publicPaths = {'/login', '/forgot', '/invite'};
 
+/// The least time the splash stays up on a cold start, so its loader is seen.
+final splashMinDurationProvider = Provider<Duration>(
+  (ref) => const Duration(milliseconds: 1000),
+);
+
+/// Completes once the splash has been up for its minimum time. It starts with
+/// the router, so it overlaps the session check instead of adding to it.
+final splashHoldProvider = FutureProvider<void>((ref) async {
+  final min = ref.watch(splashMinDurationProvider);
+  if (min > Duration.zero) await Future<void>.delayed(min);
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
   // Full-screen forms use the root navigator so the tab bar hides behind them.
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final refresh = ValueNotifier<int>(0);
   ref.listen(sessionProvider, (_, _) => refresh.value++);
+  ref.listen(splashHoldProvider, (_, _) => refresh.value++);
 
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -38,7 +51,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublic = _publicPaths.contains(path);
 
       // Wait for the saved session so a cold start doesn't flash /login.
-      if (session.isLoading && !session.hasValue && !session.hasError) {
+      final sessionPending =
+          session.isLoading && !session.hasValue && !session.hasError;
+      final holding = ref.read(splashHoldProvider).isLoading;
+      if (sessionPending || (holding && !isPublic)) {
         return isPublic || path == '/splash' ? null : '/splash';
       }
 

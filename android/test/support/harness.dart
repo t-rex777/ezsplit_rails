@@ -101,14 +101,17 @@ Future<ProviderContainer> pumpApp(
   ApiClient? client,
   Stream<Uri>? links,
   List<Override> extraOverrides = const [],
-  // The splash spinner never settles; tests that stop on it pass false.
+  // The splash loader never settles; tests that stop on it pass false.
   bool settle = true,
+  // Most tests skip the splash's minimum time; splash tests set it.
+  Duration splashMin = Duration.zero,
 }) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         ...overridesFor(repo, client: client),
+        splashMinDurationProvider.overrideWithValue(splashMin),
         ...extraOverrides,
       ],
       child: EzsplitApp(listenForLinks: false, linkStream: links),

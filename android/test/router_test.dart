@@ -56,6 +56,42 @@ void main() {
     expect(locationOf(c), '/home');
   });
 
+  testWidgets('holds the splash for its minimum time on a fast start', (
+    tester,
+  ) async {
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser),
+      settle: false,
+      splashMin: const Duration(milliseconds: 1000),
+    );
+    await tester.pump(const Duration(milliseconds: 900));
+    expect(locationOf(c), '/splash');
+    expect(find.text('EzSplit'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pumpAndSettle();
+    expect(locationOf(c), '/home');
+  });
+
+  testWidgets('a slow session check does not add the minimum on top', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final c = await pumpApp(
+      tester,
+      FakeAuthRepository(current: testUser, currentGate: gate),
+      settle: false,
+      splashMin: const Duration(milliseconds: 1000),
+    );
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(locationOf(c), '/splash');
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(locationOf(c), '/home');
+  });
+
   testWidgets('tabs switch screens', (tester) async {
     final c = await pumpApp(
       tester,
