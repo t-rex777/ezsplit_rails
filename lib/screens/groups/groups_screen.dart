@@ -503,9 +503,9 @@ class _EmptyGroups extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.mint,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: c.ink, width: kSheetBorder),
+                border: Border.all(color: c.line, width: kSheetBorder),
                 boxShadow: [
-                  BoxShadow(offset: const Offset(6, 6), color: c.ink),
+                  BoxShadow(offset: const Offset(6, 6), color: c.line),
                 ],
               ),
               child: const Icon(Symbols.groups, size: 72, color: onAccent),

@@ -76,7 +76,7 @@ class IconTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(size > 48 ? kCardRadius : 10),
-        border: Border.all(color: context.ez.ink, width: kCardBorder),
+        border: Border.all(color: context.ez.line, width: kCardBorder),
       ),
       child: Center(child: CategoryIcon(icon, onAccent)),
     );

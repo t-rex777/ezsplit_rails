@@ -15,6 +15,7 @@ class EzColors extends ThemeExtension<EzColors> {
   const EzColors({
     required this.bg,
     required this.ink,
+    required this.line,
     required this.card,
     required this.amber,
     required this.green,
@@ -27,6 +28,9 @@ class EzColors extends ThemeExtension<EzColors> {
 
   final Color bg;
   final Color ink;
+
+  /// Outlines, dividers and offset shadows.
+  final Color line;
   final Color card;
   final Color amber;
   final Color green;
@@ -39,6 +43,7 @@ class EzColors extends ThemeExtension<EzColors> {
   static const light = EzColors(
     bg: Color(0xFFFFF6DC),
     ink: Color(0xFF111111),
+    line: Color(0xFF111111),
     card: Color(0xFFFFFFFF),
     amber: Color(0xFFEF9F27),
     green: Color(0xFF97C459),
@@ -49,12 +54,14 @@ class EzColors extends ThemeExtension<EzColors> {
     negative: Color(0xFFA32D2D),
   );
 
-  // Dark mode: ink is the cream outline/shadow colour. The brief gives four
-  // accent fills; amber keeps its light value.
+  // Dark mode: cream outlines on near-black were too harsh, so the surfaces
+  // are lifted to charcoal and outlined in near-black instead. The brief gives
+  // four accent fills; amber keeps its light value.
   static const dark = EzColors(
-    bg: Color(0xFF141414),
-    ink: Color(0xFFFFF6DC),
-    card: Color(0xFF222222),
+    bg: Color(0xFF2C2C2A),
+    ink: Color(0xFFF1EFE8),
+    line: Color(0xFF0B0B0B),
+    card: Color(0xFF3A3936),
     amber: Color(0xFFEF9F27),
     green: Color(0xFF639922),
     peach: Color(0xFFD85A30),
@@ -71,6 +78,7 @@ class EzColors extends ThemeExtension<EzColors> {
   EzColors copyWith({
     Color? bg,
     Color? ink,
+    Color? line,
     Color? card,
     Color? amber,
     Color? green,
@@ -82,6 +90,7 @@ class EzColors extends ThemeExtension<EzColors> {
   }) => EzColors(
     bg: bg ?? this.bg,
     ink: ink ?? this.ink,
+    line: line ?? this.line,
     card: card ?? this.card,
     amber: amber ?? this.amber,
     green: green ?? this.green,
@@ -99,6 +108,7 @@ class EzColors extends ThemeExtension<EzColors> {
     return EzColors(
       bg: l(bg, other.bg),
       ink: l(ink, other.ink),
+      line: l(line, other.line),
       card: l(card, other.card),
       amber: l(amber, other.amber),
       green: l(green, other.green),

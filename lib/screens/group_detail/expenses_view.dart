@@ -372,7 +372,7 @@ class _ExpenseRow extends ConsumerWidget {
             decoration: BoxDecoration(
               color: parseHexColor(expense.category.color, c.amber),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: c.ink, width: kCardBorder),
+              border: Border.all(color: c.line, width: kCardBorder),
             ),
             child: Center(child: CategoryIcon(expense.category.icon, onAccent)),
           ),

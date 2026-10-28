@@ -463,6 +463,7 @@ class _CategoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final ink = context.ez.ink;
+    final line = context.ez.line;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -507,7 +508,7 @@ class _CategoryRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: context.ez.card,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: ink, width: kPillBorder),
+              border: Border.all(color: line, width: kPillBorder),
             ),
             child: Align(
               alignment: Alignment.centerLeft,
@@ -520,7 +521,7 @@ class _CategoryRow extends StatelessWidget {
                     color: fill,
                     border: fraction > 0 && fraction < 1
                         ? Border(
-                            right: BorderSide(color: ink, width: kPillBorder),
+                            right: BorderSide(color: line, width: kPillBorder),
                           )
                         : null,
                   ),

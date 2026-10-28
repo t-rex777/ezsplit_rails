@@ -52,6 +52,7 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
   @override
   Widget build(BuildContext context) {
     final ink = context.ez.ink;
+    final line = context.ez.line;
     final down = _pressed && _interactive;
     final shift = down ? widget.shadowOffset : 0.0;
     final shadows = (!widget.showShadow || down)
@@ -60,7 +61,7 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
             BoxShadow(
               offset: Offset(widget.shadowOffset, widget.shadowOffset),
               blurRadius: 0,
-              color: ink,
+              color: line,
             ),
           ];
 
@@ -73,7 +74,7 @@ class _BrutalSurfaceState extends State<BrutalSurface> {
       decoration: BoxDecoration(
         color: widget.color,
         borderRadius: BorderRadius.circular(widget.radius),
-        border: Border.all(color: ink, width: widget.borderWidth),
+        border: Border.all(color: line, width: widget.borderWidth),
         boxShadow: shadows,
       ),
       child: widget.child,

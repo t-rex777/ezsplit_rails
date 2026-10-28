@@ -19,7 +19,7 @@ class Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: c.ink, width: kPillBorder),
+        border: Border.all(color: c.line, width: kPillBorder),
       ),
       child: Text(
         initials,

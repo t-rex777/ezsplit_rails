@@ -34,6 +34,18 @@ void main() {
     });
   }
 
+  test('dark ink text has 4.5:1 on the page and the card', () {
+    final c = EzColors.dark;
+    expect(contrast(c.ink, c.bg), greaterThanOrEqualTo(4.5));
+    expect(contrast(c.ink, c.card), greaterThanOrEqualTo(4.5));
+  });
+
+  test('dark outlines are darker than the surfaces they frame', () {
+    final c = EzColors.dark;
+    expect(_luminance(c.line), lessThan(_luminance(c.bg)));
+    expect(_luminance(c.line), lessThan(_luminance(c.card)));
+  });
+
   test('light ink has 4.5:1 on every accent fill', () {
     final c = EzColors.light;
     for (final fill in [c.amber, c.green, c.peach, c.mint, c.lilac]) {

@@ -68,7 +68,7 @@ class _BrutalInputState extends State<BrutalInput> {
     final c = context.ez;
     final text = Theme.of(context).textTheme;
     final hasError = widget.errorText != null;
-    final borderColor = hasError ? c.negative : c.ink;
+    final borderColor = hasError ? c.negative : c.line;
     final lit = _focused && !widget.readOnly;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +90,7 @@ class _BrutalInputState extends State<BrutalInput> {
                     BoxShadow(
                       offset: const Offset(kShadowOffset, kShadowOffset),
                       blurRadius: 0,
-                      color: c.ink,
+                      color: c.line,
                     ),
                   ]
                 : null,

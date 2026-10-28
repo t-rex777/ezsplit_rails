@@ -34,7 +34,7 @@ class ComingSoon extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: tile,
                   borderRadius: BorderRadius.circular(kCardRadius),
-                  border: Border.all(color: context.ez.ink, width: kCardBorder),
+                  border: Border.all(color: context.ez.line, width: kCardBorder),
                 ),
                 child: Icon(icon, size: 32, color: onAccent),
               ),

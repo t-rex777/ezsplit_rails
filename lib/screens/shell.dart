@@ -48,7 +48,7 @@ class _OfflineBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.peach,
           border: Border(
-            top: BorderSide(color: c.ink, width: kCardBorder),
+            top: BorderSide(color: c.line, width: kCardBorder),
           ),
         ),
         child: Row(
@@ -101,7 +101,7 @@ class _TabBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.card,
         border: Border(
-          top: BorderSide(color: c.ink, width: kSheetBorder),
+          top: BorderSide(color: c.line, width: kSheetBorder),
         ),
       ),
       child: Row(
@@ -151,7 +151,7 @@ class _TabItem extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(
-            color: active ? c.ink : Colors.transparent,
+            color: active ? c.line : Colors.transparent,
             width: kPillBorder,
           ),
         ),

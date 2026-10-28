@@ -313,7 +313,6 @@ class _DashedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.ez.ink;
     return Semantics(
       button: true,
       label: label,
@@ -323,7 +322,7 @@ class _DashedButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(kCardRadius),
         onTap: onTap,
         child: CustomPaint(
-          painter: _DashedBorder(ink),
+          painter: _DashedBorder(context.ez.line),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: kMinTap),
             child: Padding(

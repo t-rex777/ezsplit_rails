@@ -106,9 +106,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: c.amber,
-                          border: Border.all(color: c.ink, width: 3),
+                          border: Border.all(color: c.line, width: 3),
                           boxShadow: [
-                            BoxShadow(offset: const Offset(5, 5), color: c.ink),
+                            BoxShadow(offset: const Offset(5, 5), color: c.line),
                           ],
                         ),
                         child: Text(

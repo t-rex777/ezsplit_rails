@@ -281,7 +281,7 @@ class _PersonRow extends StatelessWidget {
         border: first
             ? null
             : Border(
-                top: BorderSide(color: c.ink, width: kPillBorder),
+                top: BorderSide(color: c.line, width: kPillBorder),
               ),
       ),
       child: Row(
@@ -420,7 +420,7 @@ class _NumFieldState extends State<_NumField> {
         decoration: BoxDecoration(
           color: c.card,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: c.ink, width: kCardBorder),
+          border: Border.all(color: c.line, width: kCardBorder),
         ),
         child: Row(
           children: [

@@ -19,7 +19,7 @@ ThemeData buildTheme(Brightness b) {
           primary: c.ink,
           onPrimary: c.bg,
           error: c.negative,
-          outline: c.ink,
+          outline: c.line,
         ),
     textTheme: textTheme,
     primaryTextTheme: textTheme,

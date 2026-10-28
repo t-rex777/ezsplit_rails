@@ -371,7 +371,7 @@ class _MemberRow extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 56),
       decoration: BoxDecoration(
         border: divider
-            ? Border(top: BorderSide(color: c.ink, width: 2))
+            ? Border(top: BorderSide(color: c.line, width: 2))
             : null,
       ),
       child: Row(

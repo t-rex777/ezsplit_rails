@@ -227,9 +227,9 @@ class _Swatch extends StatelessWidget {
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border: Border.all(color: c.ink, width: kCardBorder),
+                border: Border.all(color: c.line, width: kCardBorder),
                 boxShadow: selected
-                    ? [BoxShadow(offset: const Offset(3, 3), color: c.ink)]
+                    ? [BoxShadow(offset: const Offset(3, 3), color: c.line)]
                     : null,
               ),
               child: selected

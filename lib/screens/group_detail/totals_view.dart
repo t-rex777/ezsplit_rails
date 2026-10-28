@@ -104,7 +104,7 @@ class _Body extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: parseHexColor(cat.color, c.amber),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: c.ink, width: kPillBorder),
+                      border: Border.all(color: c.line, width: kPillBorder),
                     ),
                     child: Center(
                       child: CategoryIcon(cat.icon, onAccent, size: 20),

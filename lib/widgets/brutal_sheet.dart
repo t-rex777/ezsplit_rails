@@ -15,12 +15,12 @@ Future<T?> showBrutalSheet<T>(
     enableDrag: enableDrag,
     useSafeArea: true,
     backgroundColor: c.card,
-    barrierColor: c.ink.withValues(alpha: 0.6),
+    barrierColor: c.line.withValues(alpha: 0.6),
     shape: RoundedRectangleBorder(
       borderRadius: const BorderRadius.vertical(
         top: Radius.circular(kSheetRadius),
       ),
-      side: BorderSide(color: c.ink, width: kSheetBorder),
+      side: BorderSide(color: c.line, width: kSheetBorder),
     ),
     builder: (ctx) => Padding(
       padding: EdgeInsets.fromLTRB(
