@@ -135,6 +135,9 @@ class FakeUsersRepository extends UsersRepository {
   @override
   Future<List<User>> friends() async => friendList;
 
+  @override
+  Future<List<FriendRequest>> friendRequests() async => const [];
+
   Object? updateError;
   Completer<void>? updateGate;
   final List<Map<String, Object?>> updates = [];

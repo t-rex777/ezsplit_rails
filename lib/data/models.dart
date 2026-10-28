@@ -40,6 +40,37 @@ class User {
   }
 }
 
+/// A pending friend invite sent to the signed-in user.
+class FriendRequest {
+  const FriendRequest({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+  });
+
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String email;
+
+  /// Reads `{"id": 1, "inviter": {"first_name": ..., "email_address": ...}}`.
+  factory FriendRequest.fromJson(Map<String, dynamic> json) {
+    final inviter = json['inviter'] as Map<String, dynamic>;
+    return FriendRequest(
+      id: (json['id'] as num).toInt(),
+      firstName: inviter['first_name'] as String? ?? '',
+      lastName: inviter['last_name'] as String? ?? '',
+      email: inviter['email_address'] as String? ?? '',
+    );
+  }
+
+  String get name {
+    final full = '$firstName $lastName'.trim();
+    return full.isEmpty ? email : full;
+  }
+}
+
 class Group {
   const Group({
     required this.id,

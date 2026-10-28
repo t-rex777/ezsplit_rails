@@ -5,6 +5,7 @@ import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models.dart';
 import '../../state/group_icons.dart';
+import '../../data/users_repository.dart';
 import '../../state/groups.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
@@ -92,6 +93,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
 
   Future<void> _refresh() async {
     ref.invalidate(groupsProvider);
+    ref.invalidate(friendRequestsProvider);
     try {
       await ref.read(groupsProvider.future);
     } catch (_) {
@@ -192,6 +194,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                 ),
                 const SizedBox(height: 14),
               ],
+              const _FriendRequests(),
               Expanded(
                 child: groups.when(
                   loading: () => Center(
@@ -245,6 +248,122 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
       itemCount: shown.length,
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (_, i) => _GroupRow(group: shown[i]),
+    );
+  }
+}
+
+class _FriendRequests extends ConsumerStatefulWidget {
+  const _FriendRequests();
+
+  @override
+  ConsumerState<_FriendRequests> createState() => _FriendRequestsState();
+}
+
+class _FriendRequestsState extends ConsumerState<_FriendRequests> {
+  final Set<int> _busy = {};
+
+  Future<void> _answer(FriendRequest r, {required bool accept}) async {
+    final repo = ref.read(usersRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy.add(r.id));
+    String message;
+    try {
+      message = accept
+          ? await repo.acceptFriendRequest(r.id)
+          : await repo.declineFriendRequest(r.id);
+    } catch (e) {
+      message = errorMessage(e);
+    }
+    if (!mounted) return;
+    ref.invalidate(friendsProvider);
+    ref.invalidate(friendRequestsProvider);
+    try {
+      await ref.read(friendRequestsProvider.future);
+    } catch (_) {
+      // The section stays hidden when the list cannot load.
+    }
+    if (!mounted) return;
+    setState(() => _busy.remove(r.id));
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final requests = ref.watch(friendRequestsProvider).value ?? const [];
+    if (requests.isEmpty) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Friend requests',
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final r in requests)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10, right: 4),
+                      child: BrutalCard(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              r.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodySmall,
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: BrutalButton(
+                                    label: 'Accept',
+                                    color: context.ez.green,
+                                    onPressed: _busy.contains(r.id)
+                                        ? null
+                                        : () => _answer(r, accept: true),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: BrutalButton(
+                                    label: 'Decline',
+                                    color: context.ez.peach,
+                                    onPressed: _busy.contains(r.id)
+                                        ? null
+                                        : () => _answer(r, accept: false),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

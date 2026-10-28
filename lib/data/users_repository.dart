@@ -56,6 +56,27 @@ class UsersRepository {
     return parseOrThrow(() => json['message'] as String);
   }
 
+  /// Friend requests waiting for the signed-in user.
+  Future<List<FriendRequest>> friendRequests() async {
+    final json = await _api.get('/invitations');
+    return parseOrThrow(
+      () => [
+        for (final r in json['data'] as List)
+          FriendRequest.fromJson(r as Map<String, dynamic>),
+      ],
+    );
+  }
+
+  /// Returns the server's message, for example "You are now friends with Riya S."
+  Future<String> acceptFriendRequest(int id) => _answer(id, 'accept');
+
+  Future<String> declineFriendRequest(int id) => _answer(id, 'decline');
+
+  Future<String> _answer(int id, String action) async {
+    final json = await _api.post('/invitations/$id/$action');
+    return parseOrThrow(() => json['message'] as String);
+  }
+
   User _user(Map<String, dynamic> json) =>
       parseOrThrow(() => User.fromJson(JsonApiDoc(json).data));
 }

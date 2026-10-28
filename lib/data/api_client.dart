@@ -162,10 +162,8 @@ Future<void> _excludeFromIosBackup(String path) async {
   if (!Platform.isIOS) return;
   try {
     await Directory(path).create(recursive: true);
-    await const MethodChannel('ezsplit/backup').invokeMethod<void>(
-      'excludeFromBackup',
-      path,
-    );
+    await const MethodChannel('ezsplit/backup')
+        .invokeMethod<void>('excludeFromBackup', path);
   } catch (e) {
     debugPrint('Could not exclude cookies from backup: $e');
   }
