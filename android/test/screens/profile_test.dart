@@ -13,6 +13,7 @@ import 'package:ezsplit_mobile/widgets/brutal_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fakes.dart';
@@ -139,6 +140,69 @@ void main() {
       await tester.pumpAndSettle();
       expect(users.invited, ['sam@example.com']);
       expect(find.text('Invite sent to sam@example.com.'), findsOneWidget);
+    });
+
+    testWidgets('Invite a friend shows a one-use QR code and makes a new one', (
+      tester,
+    ) async {
+      final users = FakeUsersRepository();
+      await pumpProfile(tester, users: users);
+      await tester.tap(find.text('Invite a friend'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Scan to join'), findsOneWidget);
+      // The sheet keys the code by the link it encodes.
+      Finder code(String url) => find.byKey(ValueKey(url));
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(code('http://10.0.0.5:3100/register?token=qr1'), findsOneWidget);
+      expect(
+        find.text('Works once, for one person. Expires in 7 days.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('New code'));
+      await tester.pumpAndSettle();
+      expect(users.qrInvites, 2);
+      expect(code('http://10.0.0.5:3100/register?token=qr2'), findsOneWidget);
+    });
+
+    testWidgets('the QR code stays dark on white in dark mode', (tester) async {
+      final c = await pumpProfile(tester);
+      c.read(themeModeProvider.notifier).set(ThemeMode.dark);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Invite a friend'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpAndSettle();
+
+      final card = tester.widget<BrutalCard>(
+        find.ancestor(
+          of: find.byType(QrImageView),
+          matching: find.byType(BrutalCard),
+        ),
+      );
+      expect(card.color, Colors.white);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the QR sheet offers a retry when the code fails', (
+      tester,
+    ) async {
+      final users = FakeUsersRepository()
+        ..qrInviteError = const ApiError(message: 'Offline');
+      await pumpProfile(tester, users: users);
+      await tester.tap(find.text('Invite a friend'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show QR code'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrImageView), findsNothing);
+
+      users.qrInviteError = null;
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QrImageView), findsOneWidget);
     });
 
     testWidgets('My categories opens the list', (tester) async {

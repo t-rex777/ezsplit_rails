@@ -225,14 +225,22 @@ void main() {
     expect(locationOf(c), '/home');
   });
 
-  testWidgets('/invite without params goes to /login', (tester) async {
+  testWidgets('/invite without a token goes to /login', (tester) async {
     final c = await pumpApp(tester, FakeAuthRepository());
     routerOf(c).go('/invite');
     await tester.pumpAndSettle();
     expect(locationOf(c), '/login');
-    routerOf(c).go('/invite?token=abc');
+    routerOf(c).go('/invite?email=a@b.co');
     await tester.pumpAndSettle();
     expect(locationOf(c), '/login');
+  });
+
+  testWidgets('/invite with only a token opens the invite', (tester) async {
+    final c = await pumpApp(tester, FakeAuthRepository());
+    routerOf(c).go('/invite?token=abc');
+    await tester.pumpAndSettle();
+    expect(locationOf(c), '/invite?token=abc');
+    expect(find.text('Join ezsplit'), findsOneWidget);
   });
 
   testWidgets('a failed session load lands on /login without an error', (
@@ -267,6 +275,20 @@ void main() {
       expect(repo.invites, isEmpty);
     });
 
+    testWidgets('a scanned QR link opens the invite with no email', (
+      tester,
+    ) async {
+      final c = await pumpApp(
+        tester,
+        FakeAuthRepository(),
+        links: links.stream,
+      );
+      links.add(Uri.parse('https://10.0.0.5/register?token=abc'));
+      await tester.pumpAndSettle();
+      expect(locationOf(c), '/invite?token=abc');
+      expect(find.text('Join ezsplit'), findsOneWidget);
+    });
+
     testWidgets('malformed and foreign links leave the route alone', (
       tester,
     ) async {
@@ -277,7 +299,7 @@ void main() {
       );
       for (final link in [
         'ezsplit://register?token=%C0%AF&email_address=a@b.c',
-        'ezsplit://register?token=abc',
+        'ezsplit://register?email_address=a@b.co',
         'ezsplit://groups/1',
         'https://evil.example/home',
       ]) {

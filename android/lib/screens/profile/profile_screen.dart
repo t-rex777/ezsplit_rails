@@ -12,6 +12,7 @@ import '../../widgets/brutal_button.dart';
 import '../../widgets/brutal_card.dart';
 import '../../widgets/brutal_pill.dart';
 import '../groups/group_widgets.dart';
+import 'qr_invite_sheet.dart';
 
 String userInitials(User u) => u.initials.isEmpty ? '?' : u.initials;
 
@@ -94,6 +95,7 @@ class ProfileScreen extends ConsumerWidget {
                 final toast = await showInviteSheet(
                   context,
                   sentMessage: (email) => 'Invite sent to $email.',
+                  onShowQr: () => showQrInviteSheet(context),
                 );
                 if (toast != null) {
                   messenger.showSnackBar(SnackBar(content: Text(toast)));

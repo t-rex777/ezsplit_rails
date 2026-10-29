@@ -123,22 +123,28 @@ class GroupIconPicker extends StatelessWidget {
 /// Sends a friend invite. Returns the toast to show, or null if dismissed.
 /// An invite only makes the person a friend; it never adds them to a group.
 /// [sentMessage] words the toast for a new invite; the default suits New group.
+/// [onShowQr] adds a "Show QR code" button that closes this sheet and calls it.
 Future<String?> showInviteSheet(
   BuildContext context, {
   String Function(String email)? sentMessage,
+  VoidCallback? onShowQr,
 }) => showBrutalSheet<String>(
   context,
   title: 'Invite by email',
-  child: _InviteForm(sentMessage: sentMessage ?? _groupSentMessage),
+  child: _InviteForm(
+    sentMessage: sentMessage ?? _groupSentMessage,
+    onShowQr: onShowQr,
+  ),
 );
 
 String _groupSentMessage(String email) =>
     'Invite sent. Add ${email.split('@').first} to the group once they join.';
 
 class _InviteForm extends ConsumerStatefulWidget {
-  const _InviteForm({required this.sentMessage});
+  const _InviteForm({required this.sentMessage, this.onShowQr});
 
   final String Function(String email) sentMessage;
+  final VoidCallback? onShowQr;
 
   @override
   ConsumerState<_InviteForm> createState() => _InviteFormState();
@@ -200,6 +206,18 @@ class _InviteFormState extends ConsumerState<_InviteForm> {
           icon: Symbols.mail,
           onPressed: _valid && !_sending ? _send : null,
         ),
+        if (widget.onShowQr case final onShowQr?) ...[
+          const SizedBox(height: 12),
+          BrutalButton(
+            label: 'Show QR code',
+            icon: Symbols.qr_code_2,
+            color: context.ez.card,
+            onPressed: () {
+              Navigator.of(context).pop();
+              onShowQr();
+            },
+          ),
+        ],
       ],
     );
   }

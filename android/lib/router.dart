@@ -64,8 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Accepting an invite signs the user in, which ends the invite flow too.
       if (signedIn && (path == '/login' || path == '/invite')) return '/home';
       if (path == '/invite' &&
-          ((state.uri.queryParameters['token'] ?? '').isEmpty ||
-              (state.uri.queryParameters['email'] ?? '').isEmpty)) {
+          (state.uri.queryParameters['token'] ?? '').isEmpty) {
         return '/login';
       }
       return null;

@@ -70,14 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     showBrutalSheet<void>(
       context,
       title: 'Paste your invite link',
-      child: _InviteLinkForm(
-        onLink: (link) => router.go(
-          Uri(
-            path: '/invite',
-            queryParameters: {'token': link.token, 'email': link.email},
-          ).toString(),
-        ),
-      ),
+      child: _InviteLinkForm(onLink: (link) => router.go(link.location)),
     );
   }
 
@@ -108,7 +101,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: c.amber,
                           border: Border.all(color: c.line, width: 3),
                           boxShadow: [
-                            BoxShadow(offset: const Offset(5, 5), color: c.line),
+                            BoxShadow(
+                              offset: const Offset(5, 5),
+                              color: c.line,
+                            ),
                           ],
                         ),
                         child: Text(

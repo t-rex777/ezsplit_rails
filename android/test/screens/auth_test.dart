@@ -33,10 +33,19 @@ void main() {
       expect(link?.email, 'neha@gmail.com');
     });
 
-    test('returns null for text, a missing field, or another path', () {
+    test('reads a QR link, which has a token and no email', () {
+      final web = parseInviteLink('https://ezsplit.app/register?token=abc');
+      expect(web?.token, 'abc');
+      expect(web?.email, isNull);
+      final app = parseInviteLink('ezsplit://register?token=abc');
+      expect(app?.token, 'abc');
+      expect(app?.email, isNull);
+    });
+
+    test('returns null for text, a missing token, or another path', () {
       expect(parseInviteLink('hello'), isNull);
       expect(parseInviteLink(''), isNull);
-      expect(parseInviteLink('https://ezsplit.app/register?token=abc'), isNull);
+      expect(parseInviteLink('https://ezsplit.app/register?token='), isNull);
       expect(
         parseInviteLink('https://ezsplit.app/register?email_address=a@b.co'),
         isNull,
@@ -273,6 +282,45 @@ void main() {
       expect(repo.invites.single['email'], 'neha@gmail.com');
       expect(repo.invites.single['phone'], '9876543210');
       expect(repo.invites.single['dob'], isA<DateTime>());
+      expect(find.text('Home'), findsWidgets);
+    });
+
+    testWidgets('a QR invite asks for the email and submits what was typed', (
+      tester,
+    ) async {
+      final repo = FakeAuthRepository();
+      final c = await pumpApp(tester, repo);
+      routerOf(c).go('/invite?token=qr1');
+      await tester.pumpAndSettle();
+
+      final fields = find.byType(TextField);
+      expect(tester.widget<TextField>(fields.at(0)).readOnly, isFalse);
+      await tester.enterText(fields.at(1), 'Sam');
+      await tester.enterText(fields.at(2), 'Rao');
+      await tester.enterText(fields.at(3), '9876543210');
+      await tester.ensureVisible(fields.at(4));
+      await tester.tap(fields.at(4));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.enterText(fields.at(5), 'secret1');
+      await tester.ensureVisible(find.text('Join ezsplit'));
+      await tester.tap(find.text('Join ezsplit'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter your email'), findsOneWidget);
+      expect(repo.invites, isEmpty);
+
+      await tester.ensureVisible(fields.at(0));
+      await tester.enterText(fields.at(0), ' sam@example.com ');
+      await tester.pump();
+      await tester.ensureVisible(find.text('Join ezsplit'));
+      await tester.pump();
+      await tester.tap(find.text('Join ezsplit'));
+      await tester.pumpAndSettle();
+
+      expect(repo.invites, hasLength(1));
+      expect(repo.invites.single['token'], 'qr1');
+      expect(repo.invites.single['email'], 'sam@example.com');
       expect(find.text('Home'), findsWidgets);
     });
   });

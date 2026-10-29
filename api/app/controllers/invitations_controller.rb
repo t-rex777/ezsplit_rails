@@ -45,6 +45,13 @@ class InvitationsController < ApplicationController
     end
   end
 
+  # POST /invitations/qr
+  # A one-use invite for a QR code; the link is the same web page the invite email opens.
+  def qr
+    invitation = current_user.invitations.create!(kind: :qr)
+    render json: { url: invitation.registration_url, expires_at: invitation.expires_at }, status: :created
+  end
+
   # POST /invitations/:id/accept
   def accept
     ActiveRecord::Base.transaction do
@@ -91,8 +98,9 @@ class InvitationsController < ApplicationController
     @invited_user = User.find_by_email_address(update_invitation_params[:email_address])
   end
 
+  # A QR invite isn't sent to anyone, so it can only be used to sign up.
   def set_invitation
-    @invitation = Invitation.find_by(id: params[:id])
+    @invitation = Invitation.kind_email.find_by(id: params[:id])
   end
 
   def set_received_invitation

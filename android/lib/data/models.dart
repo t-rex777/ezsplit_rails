@@ -71,6 +71,20 @@ class FriendRequest {
   }
 }
 
+/// A one-use invite with no email, shown as a QR code.
+class QrInvite {
+  const QrInvite({required this.url, required this.expiresAt});
+
+  final String url;
+  final DateTime expiresAt;
+
+  /// Reads `{"url": "https://<host>/register?token=...", "expires_at": "..."}`.
+  factory QrInvite.fromJson(Map<String, dynamic> json) => QrInvite(
+    url: json['url'] as String,
+    expiresAt: DateTime.parse(json['expires_at'] as String),
+  );
+}
+
 class Group {
   const Group({
     required this.id,

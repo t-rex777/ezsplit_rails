@@ -12,6 +12,7 @@ Rails.application.routes.draw do
   resources :invitations, only: %i[ index create update ] do
     post :accept, on: :member
     post :decline, on: :member
+    post :qr, on: :collection
   end
 
   # Invite email landing page; hands the invite to the mobile app.

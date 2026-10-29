@@ -74,5 +74,28 @@ RSpec.describe InvitationAcceptanceService, type: :service do
         expect(result[:error]).to eq("Invitation not found.")
       end
     end
+
+    context 'when the invitation is a QR invite' do
+      let(:qr_invitation) { create(:invitation, :qr, inviter: inviter) }
+
+      it 'accepts any email' do
+        result = described_class.new(qr_invitation, invited_user, qr_invitation.token).call
+
+        expect(result[:success]).to be true
+        expect(qr_invitation.reload.invited_user).to eq(invited_user)
+        expect(invited_user.friends).to include(inviter)
+      end
+
+      it 'fails when another sign-up claimed it after it was loaded' do
+        stale = Invitation.find(qr_invitation.id)
+        described_class.new(qr_invitation, create(:user), qr_invitation.token).call
+
+        result = described_class.new(stale, invited_user, stale.token).call
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq("Invitation has already been accepted.")
+        expect(invited_user.friends).not_to include(inviter)
+      end
+    end
   end
 end

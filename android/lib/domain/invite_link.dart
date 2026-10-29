@@ -1,10 +1,18 @@
 import 'dart:convert';
 
 class InviteLink {
-  const InviteLink({required this.token, required this.email});
+  const InviteLink({required this.token, this.email});
 
   final String token;
-  final String email;
+
+  /// Null for a QR invite: the person who scans it types their own email.
+  final String? email;
+
+  /// The app route that opens the accept invite screen for this link.
+  String get location => Uri(
+    path: '/invite',
+    queryParameters: {'token': token, 'email': ?email},
+  ).toString();
 }
 
 /// Reads `ezsplit://register?...` and `https://<host>/register?...`.
@@ -44,10 +52,11 @@ InviteLink? parseInviteLink(String text) {
         email = value;
     }
   }
-  if (token == null || token.isEmpty || email == null || email.isEmpty) {
-    return null;
-  }
-  return InviteLink(token: token, email: email);
+  if (token == null || token.isEmpty) return null;
+  return InviteLink(
+    token: token,
+    email: email == null || email.isEmpty ? null : email,
+  );
 }
 
 /// Percent-decodes strictly (a `+` stays a `+`). Bad escapes or invalid UTF-8
