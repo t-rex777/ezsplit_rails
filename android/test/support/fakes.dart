@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:ezsplit_mobile/data/activities_repository.dart';
 import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/balances_repository.dart';
 import 'package:ezsplit_mobile/data/categories_repository.dart';
@@ -192,9 +193,13 @@ List<Override> repoOverrides(
   FakeGroupsRepository groups,
   FakeUsersRepository users, {
   FakeSummaryRepository? summary,
+  FakeActivitiesRepository? activities,
 }) => [
   groupsRepositoryProvider.overrideWithValue(groups),
   usersRepositoryProvider.overrideWithValue(users),
+  activitiesRepositoryProvider.overrideWithValue(
+    activities ?? FakeActivitiesRepository(),
+  ),
   summaryRepositoryProvider.overrideWithValue(
     summary ?? FakeSummaryRepository(),
   ),
@@ -458,8 +463,14 @@ List<Override> detailOverrides({
   FakeSettlementsRepository? settlements,
   FakeCategoriesRepository? categories,
   FakeSummaryRepository? summary,
+  FakeActivitiesRepository? activities,
 }) => [
-  ...repoOverrides(groups, FakeUsersRepository(), summary: summary),
+  ...repoOverrides(
+    groups,
+    FakeUsersRepository(),
+    summary: summary,
+    activities: activities,
+  ),
   expensesRepositoryProvider.overrideWithValue(expenses),
   balancesRepositoryProvider.overrideWithValue(balances),
   settlementsRepositoryProvider.overrideWithValue(
@@ -506,3 +517,101 @@ class FakeSummaryRepository extends SummaryRepository {
     return byMonth[key] ?? emptySummary(key);
   }
 }
+
+class FakeActivitiesRepository extends ActivitiesRepository {
+  FakeActivitiesRepository({this.entries = const []}) : super(dummyClient());
+
+  List<ActivityEntry> entries;
+  Object? error;
+  final List<ActivityFilter> calls = [];
+
+  @override
+  Future<Page<ActivityEntry>> list(
+    ActivityFilter filter, {
+    int page = 1,
+  }) async {
+    calls.add(filter);
+    if (error != null) throw error!;
+    final items = switch (filter) {
+      AllActivity() => entries,
+      GroupActivity(:final groupId) =>
+        entries.where((e) => e.groupId == groupId).toList(),
+      FriendActivity() => entries.where((e) => e.groupId == null).toList(),
+    };
+    return Page(items: items, page: 1, total: items.length);
+  }
+}
+
+ExpenseSnapshot makeSnapshot(
+  String name, {
+  required int paise,
+  User payer = riya,
+  List<SnapshotShare> shares = const [],
+  String? groupName = 'Goa trip',
+  String category = 'Food',
+}) => ExpenseSnapshot(
+  name: name,
+  paise: paise,
+  date: DateTime(2026, 10, 26),
+  splitType: SplitType.equal,
+  categoryName: category,
+  categoryIcon: 'restaurant',
+  categoryColor: '#F5C4B3',
+  payerId: payer.id,
+  payerName: '${payer.firstName} ${payer.lastName}',
+  groupName: groupName,
+  shares: shares,
+);
+
+ActivityEntry makeActivity(
+  int id,
+  ActivityAction action, {
+  required User actor,
+  ExpenseSnapshot? before,
+  ExpenseSnapshot? after,
+  int? groupId = 1,
+  int expenseId = 1,
+  DateTime? at,
+  List<String> changedFields = const [],
+}) => ActivityEntry(
+  id: id,
+  action: action,
+  at: at ?? DateTime.now(),
+  actorId: actor.id,
+  actorName: '${actor.firstName} ${actor.lastName}',
+  groupId: groupId,
+  groupName: groupId == null ? null : (after ?? before)!.groupName,
+  expenseId: expenseId,
+  before: before,
+  after: after,
+  changedFields: changedFields,
+);
+
+ActivityEntry makePayment(
+  int id, {
+  required User payer,
+  required User payee,
+  required int paise,
+  int? groupId = 1,
+  String? groupName = 'Goa trip',
+  String? notes,
+}) => ActivityEntry(
+  id: id,
+  action: ActivityAction.settled,
+  at: DateTime.now(),
+  actorId: payer.id,
+  actorName: '${payer.firstName} ${payer.lastName}',
+  groupId: groupId,
+  groupName: groupId == null ? null : groupName,
+  settlementId: id,
+  payment: PaymentSnapshot(
+    paise: paise,
+    settledOn: DateTime(2026, 10, 29),
+    payerId: payer.id,
+    payerName: '${payer.firstName} ${payer.lastName}',
+    payeeId: payee.id,
+    payeeName: '${payee.firstName} ${payee.lastName}',
+    notes: notes,
+  ),
+  changedFields: const [],
+);

@@ -15,7 +15,7 @@ class SettlementsController < ApplicationController
     error = participant_error(settlement)
     if error
       render json: { errors: [ error ] }, status: :unprocessable_entity
-    elsif settlement.save
+    elsif save_with_activity(settlement)
       render json: SettlementSerializer.new(settlement).serializable_hash.to_json, status: :created
     else
       render json: { errors: settlement.errors.full_messages }, status: :unprocessable_entity
@@ -35,6 +35,16 @@ class SettlementsController < ApplicationController
   end
 
   private
+
+  def save_with_activity(settlement)
+    Settlement.transaction do
+      next false unless settlement.save
+
+      Activity.record!(actor: current_user, action: "settled", settlement_id: settlement.id,
+                       group_id: settlement.group_id, before: nil, after: settlement.snapshot)
+      true
+    end
+  end
 
   def settlement_params
     params.require(:settlement).permit(:payee_id, :amount, :currency, :group_id, :notes, :settled_on)

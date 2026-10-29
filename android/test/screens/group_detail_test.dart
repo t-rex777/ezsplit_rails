@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ezsplit_mobile/data/activities_repository.dart';
 import 'package:ezsplit_mobile/data/jsonapi.dart' show JsonApiDoc;
 import 'package:ezsplit_mobile/data/models.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ezsplit_mobile/screens/group_detail/balances_view.dart';
+import 'package:ezsplit_mobile/state/activity.dart';
 import 'package:ezsplit_mobile/state/group_detail.dart';
 import 'package:ezsplit_mobile/theme/app_theme.dart';
 import 'package:ezsplit_mobile/widgets/brutal_card.dart';
@@ -40,6 +42,7 @@ class Setup {
   final FakeBalancesRepository balances;
   final settlements = FakeSettlementsRepository();
   final summary = FakeSummaryRepository();
+  final activities = FakeActivitiesRepository();
 }
 
 Future<ProviderContainer> open(
@@ -59,6 +62,7 @@ Future<ProviderContainer> open(
       balances: s.balances,
       settlements: s.settlements,
       summary: s.summary,
+      activities: s.activities,
     ),
   );
   routerOf(c).go(path);
@@ -645,6 +649,23 @@ void main() {
       expect(s.expenses.queries.length, greaterThan(expenseLoads));
       expect(find.text('Payment recorded'), findsOneWidget);
       expect(find.text('Record payment'), findsNothing);
+    });
+
+    testWidgets('recording a payment reloads the activity feed', (
+      tester,
+    ) async {
+      final s = Setup(
+        balances: [balanceRow(milisha, -185000), balanceRow(neha, 185000)],
+      );
+      final c = await open(tester, s, path: '/groups/1?view=balances');
+      c.listen(activityFeedProvider(const AllActivity()), (_, _) {});
+      await tester.pumpAndSettle();
+      final loads = s.activities.calls.length;
+      await tester.tap(find.text('Settle up'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record payment'));
+      await tester.pumpAndSettle();
+      expect(s.activities.calls.length, loads + 1);
     });
 
     testWidgets('recording a payment reloads the dashboard summary', (

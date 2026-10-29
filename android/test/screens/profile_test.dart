@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
 import 'package:ezsplit_mobile/data/api_client.dart';
 import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/categories_repository.dart';
@@ -18,23 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fakes.dart';
 import '../support/harness.dart';
-
-class _CountingAdapter implements HttpClientAdapter {
-  int requests = 0;
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<Uint8List>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    requests++;
-    throw StateError('no network call expected: ${options.path}');
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
 
 Future<ProviderContainer> pumpProfile(
   WidgetTester tester, {
@@ -609,19 +590,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(cats.written.last, {'id': foodCategory.id});
       expect(find.text('Food'), findsNothing);
-    });
-  });
-
-  group('Activity', () {
-    testWidgets('shows Coming soon and makes no network calls', (tester) async {
-      final adapter = _CountingAdapter();
-      final client = ApiClient(
-        Dio(BaseOptions(baseUrl: 'http://test'))..httpClientAdapter = adapter,
-      );
-      await pumpProfile(tester, client: client, path: '/activity');
-      expect(find.text('Coming soon'), findsOneWidget);
-      expect(find.text('Activity'), findsWidgets);
-      expect(adapter.requests, 0);
     });
   });
 }

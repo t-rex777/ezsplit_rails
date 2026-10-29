@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   resources :users, only: %i[ index ]
   resources :expenses
   resources :settlements, only: %i[ index create destroy ]
+  resources :activities, only: %i[ index ]
   resources :balances, only: %i[ index ]
   resource :summary, only: %i[ show ]
   resource :me, only: %i[ show update ], controller: "me"
