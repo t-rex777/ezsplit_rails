@@ -7,6 +7,7 @@ import '../data/models.dart';
 import '../domain/money.dart';
 import '../domain/split.dart';
 import '../screens/groups/group_widgets.dart' show errorMessage;
+import 'activity.dart';
 import 'group_detail.dart';
 import 'groups.dart';
 import 'session.dart';
@@ -49,6 +50,7 @@ void invalidateAfterExpenseChange(
   int? expenseId,
 }) {
   invalidate(groupExpensesProvider);
+  invalidate(activityFeedProvider);
   invalidate(groupBalancesProvider(groupId));
   invalidate(groupTotalsProvider(groupId));
   invalidate(groupProvider(groupId));

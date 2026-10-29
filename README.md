@@ -24,7 +24,7 @@ flowchart LR
 
   subgraph Server["Rails API (api/)"]
     Auth["Authentication concern<br/>session cookie"]
-    Ctrl["Controllers<br/>groups, expenses, balances,<br/>settlements, invitations, me"]
+    Ctrl["Controllers<br/>groups, expenses, balances,<br/>settlements, activities,<br/>invitations, me"]
     Ser["Serializers<br/>JSON:API"]
     Calc["BalanceCalculator"]
     DB[("SQLite")]
@@ -63,12 +63,20 @@ Screenshots from an Android phone.
 |---|---|---|
 | ![Add an expense](docs/screenshots/04-add-expense.png) | ![Balances](docs/screenshots/05-balances.png) | ![Profile](docs/screenshots/06-profile.png) |
 
+| Activity | An edit | A delete | A settle-up |
+|---|---|---|---|
+| ![Activity](docs/screenshots/07-activity.png) | ![An edit](docs/screenshots/08-activity-edit.png) | ![A delete](docs/screenshots/09-activity-delete.png) | ![A settle-up](docs/screenshots/10-activity-settle.png) |
+
 1. **Home** shows your share this month, what you owe, what you are owed, and spending by category.
 2. **Groups** lists your groups. Filter to groups that owe you or that you owe, and see friend requests waiting for you.
 3. **A group** shows its expenses by date, with what you lent or owe on each.
 4. **Add an expense.** Split it equally, by percentage, or by exact amounts. The app shows each share before you save.
 5. **Balances** shows who owes whom and the fewest payments that settle the group. Tap **Settle up** to record one.
 6. **Profile** holds your details, your categories, the light or dark theme, and log out. You stay signed in after a restart until you log out.
+7. **Activity** lists who added, edited, or deleted an expense, and who settled up, with the group and the time. Filter by group, or by expenses outside any group.
+8. **An edit** shows each changed field before and after, and the full expense as it was.
+9. **A delete** shows the expense that was removed, so it stays readable.
+10. **A settle-up** shows who paid whom, how much, and when.
 
 ## Run it locally
 

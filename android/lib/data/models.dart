@@ -550,3 +550,186 @@ class NewExpense {
 
 String isoDate(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+enum ActivityAction { created, updated, deleted, settled }
+
+/// A settle-up as the activity log copied it.
+class PaymentSnapshot {
+  const PaymentSnapshot({
+    required this.paise,
+    required this.settledOn,
+    required this.payerId,
+    required this.payerName,
+    required this.payeeId,
+    required this.payeeName,
+    this.notes,
+  });
+
+  final int paise;
+  final DateTime settledOn;
+  final int payerId;
+  final String payerName;
+  final int payeeId;
+  final String payeeName;
+  final String? notes;
+
+  factory PaymentSnapshot.fromJson(Map<String, dynamic> s) {
+    final payer = s['payer'] as Map<String, dynamic>;
+    final payee = s['payee'] as Map<String, dynamic>;
+    return PaymentSnapshot(
+      paise: paiseOf(s['amount']),
+      settledOn: DateTime.parse(s['settled_on'] as String),
+      payerId: (payer['id'] as num).toInt(),
+      payerName: payer['name'] as String,
+      payeeId: (payee['id'] as num).toInt(),
+      payeeName: payee['name'] as String,
+      notes: s['notes'] as String?,
+    );
+  }
+}
+
+class SnapshotShare {
+  const SnapshotShare({
+    required this.userId,
+    required this.name,
+    required this.paise,
+  });
+
+  final int userId;
+  final String name;
+  final int paise;
+}
+
+/// The expense as the activity log copied it. Names are copied too, so a
+/// deleted expense still reads.
+class ExpenseSnapshot {
+  const ExpenseSnapshot({
+    required this.name,
+    required this.paise,
+    required this.date,
+    required this.splitType,
+    required this.categoryName,
+    required this.categoryIcon,
+    required this.categoryColor,
+    required this.payerId,
+    required this.payerName,
+    required this.shares,
+    this.notes,
+    this.groupName,
+  });
+
+  final String name;
+  final int paise;
+  final DateTime date;
+  final SplitType splitType;
+  final String? notes;
+  final String categoryName;
+  final String categoryIcon;
+  final String categoryColor;
+  final int payerId;
+  final String payerName;
+  final String? groupName;
+  final List<SnapshotShare> shares;
+
+  factory ExpenseSnapshot.fromJson(Map<String, dynamic> s) {
+    final category = s['category'] as Map<String, dynamic>;
+    final payer = s['payer'] as Map<String, dynamic>;
+    final group = s['group'] as Map<String, dynamic>?;
+    return ExpenseSnapshot(
+      name: s['name'] as String,
+      paise: paiseOf(s['amount']),
+      date: DateTime.parse(s['expense_date'] as String),
+      splitType: SplitType.fromApi(s['split_type'] as String),
+      notes: s['notes'] as String?,
+      categoryName: category['name'] as String,
+      categoryIcon: category['icon'] as String,
+      categoryColor: category['color'] as String,
+      payerId: (payer['id'] as num).toInt(),
+      payerName: payer['name'] as String,
+      groupName: group?['name'] as String?,
+      shares: [
+        for (final share in s['shares'] as List<dynamic>)
+          SnapshotShare(
+            userId: ((share as Map)['user_id'] as num).toInt(),
+            name: share['name'] as String,
+            paise: paiseOf(share['amount']),
+          ),
+      ],
+    );
+  }
+}
+
+class ActivityEntry {
+  const ActivityEntry({
+    required this.id,
+    required this.action,
+    required this.at,
+    required this.actorId,
+    required this.actorName,
+    required this.changedFields,
+    this.groupId,
+    this.groupName,
+    this.expenseId,
+    this.settlementId,
+    this.before,
+    this.after,
+    this.payment,
+  });
+
+  final int id;
+  final ActivityAction action;
+  final DateTime at;
+  final int actorId;
+  final String actorName;
+  final int? groupId;
+  final String? groupName;
+  final int? expenseId;
+  final int? settlementId;
+  final ExpenseSnapshot? before;
+  final ExpenseSnapshot? after;
+
+  /// Set only when [action] is settled; the expense copies are then null.
+  final PaymentSnapshot? payment;
+
+  /// Top-level snapshot keys that differ; empty unless [action] is updated.
+  final List<String> changedFields;
+
+  /// The latest expense copy: after an add or edit, before a delete.
+  /// Only for expense entries.
+  ExpenseSnapshot get current => after ?? before!;
+
+  /// The amount the row shows, for expenses and payments alike.
+  int get subjectPaise => payment?.paise ?? current.paise;
+
+  factory ActivityEntry.fromJson(Map<String, dynamic> resource) {
+    final a = resource['attributes'] as Map<String, dynamic>;
+    final actor = a['actor'] as Map<String, dynamic>;
+    final group = a['group'] as Map<String, dynamic>?;
+    final before = a['before'] as Map<String, dynamic>?;
+    final after = a['after'] as Map<String, dynamic>?;
+    if (before == null && after == null) {
+      throw const FormatException('Activity needs a before or after copy');
+    }
+    final action = ActivityAction.values.byName(a['action'] as String);
+    final settled = action == ActivityAction.settled;
+    return ActivityEntry(
+      id: int.parse(resource['id'] as String),
+      action: action,
+      at: DateTime.parse(a['created_at'] as String).toLocal(),
+      actorId: (actor['id'] as num).toInt(),
+      actorName: actor['name'] as String,
+      groupId: (group?['id'] as num?)?.toInt(),
+      groupName: group?['name'] as String?,
+      expenseId: (a['expense_id'] as num?)?.toInt(),
+      settlementId: (a['settlement_id'] as num?)?.toInt(),
+      before: before == null || settled
+          ? null
+          : ExpenseSnapshot.fromJson(before),
+      after: after == null || settled ? null : ExpenseSnapshot.fromJson(after),
+      payment: settled ? PaymentSnapshot.fromJson(after!) : null,
+      changedFields: [
+        for (final f in a['changed_fields'] as List<dynamic>) f as String,
+      ],
+    );
+  }
+}

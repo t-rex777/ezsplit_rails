@@ -30,6 +30,7 @@ class ExpensesController < ApplicationController
       authorize_participants!(@expense, shares.keys)
       @expense.save!
       create_expenses_users(@expense, shares)
+      record_activity("created", before: nil, after: @expense.snapshot)
     end
     render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
   rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
@@ -37,6 +38,7 @@ class ExpensesController < ApplicationController
   end
 
   def update
+    before = @expense.snapshot
     @expense.assign_attributes(expense_params.except(:distribution))
     shares = build_shares(@expense.amount, @expense.split_type)
     if shares.nil? && (@expense.amount_changed? || @expense.split_type_changed?)
@@ -51,6 +53,7 @@ class ExpensesController < ApplicationController
         @expense.expenses_users.destroy_all
         create_expenses_users(@expense, shares)
       end
+      record_activity("updated", before: before, after: @expense.snapshot)
     end
     render json: ExpenseSerializer.new(@expense).serializable_hash.to_json
   rescue ActiveRecord::RecordInvalid, InvalidDistributionError => exception
@@ -58,13 +61,21 @@ class ExpensesController < ApplicationController
   end
 
   def destroy
-    @expense.destroy!
+    ActiveRecord::Base.transaction do
+      record_activity("deleted", before: @expense.snapshot, after: nil)
+      @expense.destroy!
+    end
     render json: { message: "Expense was successfully deleted" }, status: :ok
   rescue StandardError => e
     render json: { errors: [ e.message ] }, status: :unprocessable_entity
   end
 
   private
+
+  def record_activity(action, before:, after:)
+    Activity.record!(actor: current_user, action: action, expense_id: @expense.id, group_id: @expense.group_id,
+                     before: before, after: after)
+  end
 
   SORTS = {
     "newest" => { expense_date: :desc, id: :desc },
