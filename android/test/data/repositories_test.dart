@@ -450,6 +450,19 @@ void main() {
       expect(await repo.invite('a@b.com'), 'Invitation sent successfully.');
     });
 
+    test('qrInvite returns the link to encode and when it expires', () async {
+      adapter.onPost(
+        '/invitations/qr',
+        (s) => s.reply(201, {
+          'url': 'http://10.0.0.5:3100/register?token=abc',
+          'expires_at': '2026-11-05T10:00:00.000Z',
+        }),
+      );
+      final invite = await UsersRepository(api).qrInvite();
+      expect(invite.url, 'http://10.0.0.5:3100/register?token=abc');
+      expect(invite.expiresAt, DateTime.utc(2026, 11, 5, 10));
+    });
+
     test('summary sends month as YYYY-MM', () async {
       adapter.onGet(
         '/summary',

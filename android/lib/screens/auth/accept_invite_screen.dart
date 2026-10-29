@@ -20,6 +20,8 @@ class AcceptInviteScreen extends ConsumerStatefulWidget {
   });
 
   final String token;
+
+  /// Empty for a QR invite, which takes whatever email the person types.
   final String email;
 
   @override
@@ -56,10 +58,21 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
       ? 'Use at least $_minPassword characters'
       : null;
 
+  bool get _emailLocked => widget.email.isNotEmpty;
+
+  bool get _emailValid {
+    final e = _email.text.trim();
+    return e.contains('@') && !e.startsWith('@') && !e.endsWith('@');
+  }
+
+  String? get _emailError =>
+      _submitted && !_emailValid ? 'Enter your email' : null;
+
   String? get _dobError =>
       _submitted && _dob == null ? 'Choose your date of birth' : null;
 
   bool get _valid =>
+      _emailValid &&
       _first.text.trim().isNotEmpty &&
       _last.text.trim().isNotEmpty &&
       _phone.text.trim().isNotEmpty &&
@@ -92,7 +105,7 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
           .read(sessionProvider.notifier)
           .acceptInvite(
             token: widget.token,
-            email: widget.email,
+            email: _email.text.trim(),
             firstName: _first.text.trim(),
             lastName: _last.text.trim(),
             phone: _phone.text.trim(),
@@ -144,12 +157,23 @@ class _AcceptInviteScreenState extends ConsumerState<AcceptInviteScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              BrutalInput(
-                label: 'Email',
-                controller: _email,
-                readOnly: true,
-                suffix: Icon(Symbols.lock, color: c.ink),
-              ),
+              if (_emailLocked)
+                BrutalInput(
+                  label: 'Email',
+                  controller: _email,
+                  readOnly: true,
+                  suffix: Icon(Symbols.lock, color: c.ink),
+                )
+              else
+                BrutalInput(
+                  label: 'Email',
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
+                  errorText: _emailError,
+                ),
               const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_29_110000) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_29_160801) do
   create_table "activities", force: :cascade do |t|
     t.integer "actor_id", null: false
     t.integer "group_id"
@@ -107,7 +107,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_29_110000) do
   end
 
   create_table "invitations", force: :cascade do |t|
-    t.string "email", null: false
+    t.string "email"
     t.string "token", null: false
     t.integer "inviter_id", null: false
     t.integer "invited_user_id"
@@ -117,6 +117,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_29_110000) do
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "kind", default: 0, null: false
     t.index ["email"], name: "index_invitations_on_email"
     t.index ["invited_user_id"], name: "index_invitations_on_invited_user_id"
     t.index ["inviter_id"], name: "index_invitations_on_inviter_id"

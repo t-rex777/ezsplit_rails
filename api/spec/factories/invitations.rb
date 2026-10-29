@@ -23,6 +23,11 @@ FactoryBot.define do
       expires_at { 1.day.ago }
     end
 
+    trait :qr do
+      kind { :qr }
+      email { nil }
+    end
+
     trait :with_invited_user do
       association :invited_user, factory: :user
     end

@@ -168,6 +168,19 @@ class FakeUsersRepository extends UsersRepository {
     );
   }
 
+  int qrInvites = 0;
+  Object? qrInviteError;
+
+  @override
+  Future<QrInvite> qrInvite() async {
+    qrInvites++;
+    if (qrInviteError != null) throw qrInviteError!;
+    return QrInvite(
+      url: 'http://10.0.0.5:3100/register?token=qr$qrInvites',
+      expiresAt: DateTime.utc(2026, 11, 5),
+    );
+  }
+
   @override
   Future<String> invite(String email) async {
     invited.add(email);

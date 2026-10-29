@@ -14,12 +14,7 @@ import 'theme/app_theme.dart';
 void openIncomingLink(GoRouter router, Uri uri) {
   final link = parseInviteLink(uri.toString());
   if (link == null) return;
-  router.go(
-    Uri(
-      path: '/invite',
-      queryParameters: {'token': link.token, 'email': link.email},
-    ).toString(),
-  );
+  router.go(link.location);
 }
 
 class EzsplitApp extends ConsumerStatefulWidget {

@@ -56,6 +56,12 @@ class UsersRepository {
     return parseOrThrow(() => json['message'] as String);
   }
 
+  /// Makes a new one-use invite for a QR code.
+  Future<QrInvite> qrInvite() async {
+    final json = await _api.post('/invitations/qr');
+    return parseOrThrow(() => QrInvite.fromJson(json));
+  }
+
   /// Friend requests waiting for the signed-in user.
   Future<List<FriendRequest>> friendRequests() async {
     final json = await _api.get('/invitations');

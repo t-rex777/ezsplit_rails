@@ -31,15 +31,19 @@ class InvitationAcceptanceService
     raise InvitationExpiredError, "Invitation has expired." if @invitation.expired?
     raise InvitationAlreadyAcceptedError, "Invitation has already been accepted." if @invitation.accepted?
     raise InvitationInvalidTokenError, "Invalid invitation token." if @invitation.token != @token
+    return if @invitation.kind_qr?
     raise InvitationEmailMismatchError, "This invitation was sent to a different email address." unless @invitation.sent_to?(@invited_user)
   end
 
+  # A conditional update, so two sign-ups racing on one QR code can't both claim it.
   def update_invitation!
-    @invitation.update!(
-      invited_user: @invited_user,
-      status: :accepted,
-      accepted_at: Time.now
-    )
+    now = Time.current
+    claimed = Invitation.pending.where(id: @invitation.id, accepted_at: nil).where("expires_at > ?", now)
+                        .update_all(invited_user_id: @invited_user.id, status: Invitation.statuses[:accepted],
+                                    accepted_at: now, updated_at: now)
+    raise InvitationAlreadyAcceptedError, "Invitation has already been accepted." unless claimed == 1
+
+    @invitation.reload
   end
 
   def create_friendships!

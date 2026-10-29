@@ -14,6 +14,11 @@ RSpec.describe Invitation, type: :model do
     it { should validate_presence_of(:email) }
     it { should allow_value('user@example.com').for(:email) }
     it { should validate_presence_of(:inviter) }
+    it { should define_enum_for(:kind).with_values(email: 0, qr: 1).with_prefix }
+
+    it "lets a QR invite have no email" do
+      expect(build(:invitation, :qr)).to be_valid
+    end
   end
 
   context "token generation" do
