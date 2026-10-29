@@ -6,7 +6,9 @@ class ExpensesController < ApplicationController
   rescue_from InvalidDistributionError, with: :render_error
 
   def index
-    pagy_obj, @expenses = pagy(filtered_expenses)
+    pagy_obj, @expenses = pagy(filtered_expenses.includes(:category, :expenses_users, :payer, :group))
+    Group.preload_for_serializer(@expenses.map(&:group))
+    User.preload_for_serializer(@expenses.map(&:payer))
     options = {
       include: [ :payer, :group, :category, :expenses_users ]
     }

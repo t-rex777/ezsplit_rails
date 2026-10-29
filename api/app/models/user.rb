@@ -44,6 +44,34 @@ class User < ApplicationRecord
         .or(User.where(id: inverse_friendships.select(:user_id)))
   end
 
+  attr_writer :serialized_friends
+
+  # all_friends for UserSerializer; an array when preloaded, so callers that need a relation keep using all_friends.
+  def serialized_friends
+    @serialized_friends || all_friends
+  end
+
+  # Loads what UserSerializer reads (group ids and friends) for many users in 4 queries instead of 2 per user.
+  def self.preload_for_serializer(users)
+    users = Array(users).compact
+    return if users.empty?
+
+    ActiveRecord::Associations::Preloader.new(records: users, associations: :groups).call
+    ids = users.map(&:id).uniq
+    pairs = Friendship.where(user_id: ids).or(Friendship.where(friend_id: ids)).pluck(:user_id, :friend_id)
+    friend_ids = Hash.new { |hash, key| hash[key] = [] }
+    pairs.each do |user_id, friend_id|
+      friend_ids[user_id] << friend_id
+      friend_ids[friend_id] << user_id
+    end
+    friends_by_id = User.where(id: friend_ids.values_at(*ids).flatten.uniq).index_by(&:id)
+
+    users.each do |user|
+      # Sorted by id to match the row order SQLite returns for the all_friends query.
+      user.serialized_friends = friend_ids[user.id].uniq.sort.filter_map { |id| friends_by_id[id] }
+    end
+  end
+
   # Get all expenses with includes for better performance
   def all_expenses
     expenses.includes(:payer, :category, :expenses_users)
