@@ -22,12 +22,8 @@ RSpec.describe "Categories", type: :request do
 
       response_body = Oj.load(response.body)
       expect(response).to be_successful
-      expect(response_body["data"].length).to eq(2)
-      expect(response_body["data"][0]["attributes"]).to include(
-        "name" => "Sample Category"
-      )
-      expect(response_body["data"][1]["attributes"]).to include(
-        "name" => "Sample Category 2"
+      expect(response_body["data"].map { |c| c["attributes"]["name"] }).to eq(
+        User::DEFAULT_CATEGORIES.pluck(:name) + [ "Sample Category", "Sample Category 2" ]
       )
     end
 
@@ -36,12 +32,8 @@ RSpec.describe "Categories", type: :request do
 
       response_body = Oj.load(response.body)
       expect(response).to be_successful
-      expect(response_body["data"].length).to eq(2)
-      expect(response_body["data"][0]["attributes"]).to include(
-        "name" => "Sample Category"
-      )
-      expect(response_body["data"][1]["attributes"]).to include(
-        "name" => "Sample Category 2"
+      expect(response_body["data"].map { |c| c["attributes"]["name"] }).to eq(
+        User::DEFAULT_CATEGORIES.pluck(:name) + [ "Sample Category", "Sample Category 2" ]
       )
     end
   end

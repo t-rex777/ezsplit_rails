@@ -81,7 +81,7 @@ RSpec.describe "Expenses", type: :request do
               "relationships": {
                 "category": {
                   "data": {
-                    "id": "1",
+                    "id": category.id.to_s,
                     "type": "category"
                   }
                 },
@@ -175,7 +175,7 @@ RSpec.describe "Expenses", type: :request do
               },
               "id": "1",
               "relationships": {
-                "category": { "data": { "id": "1", "type": "category" } },
+                "category": { "data": { "id": category.id.to_s, "type": "category" } },
                 "expenses_users": {
                   "data": [
                     { "id": "1", "type": "expenses_user" },
