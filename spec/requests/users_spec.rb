@@ -2,12 +2,13 @@ require 'rails_helper'
 
 RSpec.describe "Users", type: :request do
   describe "GET /users/search" do
-    let!(:user1) { create(:user, first_name: "John", last_name: "Doe", email_address: "john.doe@example.com") }
+    let!(:user1) { create(:user, first_name: "John", last_name: "Doe", email_address: "john.doe@example.com", friends: [ user2, user3, user4, user5, user6 ]) }
     let!(:user2) { create(:user, first_name: "Jane", last_name: "Smith", email_address: "jane.smith@example.com") }
     let!(:user3) { create(:user, first_name: "Bob", last_name: "Johnson", email_address: "bob.johnson@example.com") }
     let!(:user4) { create(:user, first_name: "Alice", last_name: "Brown", email_address: "alice.brown@example.com") }
     let!(:user5) { create(:user, first_name: "Charlie", last_name: "Wilson", email_address: "charlie.wilson@example.com") }
     let!(:user6) { create(:user, first_name: "Diana", last_name: "Davis", email_address: "diana.davis@example.com") }
+    let!(:non_friend_user) { create(:user, first_name: "Janes", last_name: "Jones", email_address: "janes.jones@example.com") }
     let!(:group1) { create(:group, user: user4) }
     let!(:group_membership1) { create(:group_membership, user: user4, group: group1) }
     let(:current_user) { user1 }
@@ -25,7 +26,7 @@ RSpec.describe "Users", type: :request do
 
         expect(json_response["data"]).to be_present
         expect(json_response["data"]).to be_an(Array)
-        expect(json_response["data"].length).to eq(2)
+        expect(json_response["data"].length).to eq(1)
         expect(json_response["meta"]).to be_present
       end
 
@@ -69,6 +70,17 @@ RSpec.describe "Users", type: :request do
         json_response = JSON.parse(response.body)
 
         expect(json_response["included"]).to be_present
+      end
+
+      it "returns users from current user's friends only" do
+        get "/users/search", params: { term: "jan" }
+
+        json_response = JSON.parse(response.body)
+        user_ids = json_response["data"].map { |user| user["id"].to_s }
+
+        expect(response).to have_http_status(:ok)
+        expect(user_ids).to include(user2.id.to_s)
+        expect(user_ids).not_to include(non_friend_user.id.to_s)
       end
     end
 

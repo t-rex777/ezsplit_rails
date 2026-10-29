@@ -123,9 +123,9 @@ RSpec.describe UserMailer, type: :mailer do
       text_part = mail.body.parts.find { |part| part.content_type.include?("text/plain") }
 
       # The URL will be encoded in the email, so we check for the key parts
-      expect(html_part.body.encoded).to include("user_registers/new?token=#{invitation.token}")
+      expect(html_part.body.encoded).to include("register?token=#{invitation.token}")
       expect(html_part.body.encoded).to include("email_address=#{invitation.email}")
-      expect(text_part.body.encoded).to include("user_registers/new?token=#{invitation.token}")
+      expect(text_part.body.encoded).to include("register?token=#{invitation.token}")
       expect(text_part.body.encoded).to include("email_address=#{invitation.email}")
     end
 

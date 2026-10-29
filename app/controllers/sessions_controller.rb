@@ -15,8 +15,12 @@ class SessionsController < ApplicationController
 
   def show
     session = find_session_by_cookie
+    ActiveRecord::Associations::Preloader.new(records: [ session.user ], associations: { groups: [ :group_memberships, :users ] }).call
+    Group.preload_expense_summaries(session.user.groups)
+    User.preload_friends([ session.user ])
     options = {
-      include: [ :groups ]
+      include: [ :groups ],
+      params: { current_user: session.user }
     }
     render json: UserSerializer.new(session.user, options).serializable_hash.to_json
   end
