@@ -1,4 +1,13 @@
 class User < ApplicationRecord
+  # Icons are keys in the app's CategoryIcon map; colors come from its category color picker.
+  DEFAULT_CATEGORIES = [
+    { name: "Grocery", icon: "shopping_cart", color: "#5DCAA5" },
+    { name: "Travel", icon: "flight", color: "#B5D4F4" },
+    { name: "Entertainment", icon: "movie", color: "#AFA9EC" },
+    { name: "Dining", icon: "restaurant", color: "#FAC775" },
+    { name: "Personal Care", icon: "favorite", color: "#F4C0D1" }
+  ].freeze
+
   has_secure_password
   has_many :sessions, dependent: :destroy
   has_many :group_memberships, dependent: :destroy
@@ -23,6 +32,8 @@ class User < ApplicationRecord
   # has_secure_password already requires a password on create; this lets profile updates skip it.
   validates :password, length: { minimum: 6 }, allow_nil: true
   validates :first_name, :last_name, :phone, :date_of_birth, presence: true
+
+  after_create :create_default_categories
 
   def full_name
     "#{first_name} #{last_name}"
@@ -74,5 +85,11 @@ class User < ApplicationRecord
     Expense.where(user_id: id)
       .or(Expense.where(payer_id: id))
       .or(Expense.where(id: ExpensesUser.where(user_id: id).select(:expense_id)))
+  end
+
+  private
+
+  def create_default_categories
+    categories.create!(DEFAULT_CATEGORIES)
   end
 end

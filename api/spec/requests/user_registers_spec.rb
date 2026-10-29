@@ -21,6 +21,25 @@ RSpec.describe "UserRegisters", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it "gives the new user the five default categories" do
+      user_params = {
+        user: {
+          email_address: "test@test.com",
+          password: "helloWorld",
+          password_confirmation: "helloWorld",
+          first_name: "Test",
+          last_name: "Test",
+          phone: "9876543210",
+          date_of_birth: "2000-05-01"
+        },
+        token: invite.token
+      }
+      post user_registers_url, params: user_params
+
+      user = User.find_by!(email_address: "test@test.com")
+      expect(user.categories.order(:id).pluck(:name)).to eq([ "Grocery", "Travel", "Entertainment", "Dining", "Personal Care" ])
+    end
+
     it "sends a welcome email when user is created successfully" do
       user_params = {
         user: {
