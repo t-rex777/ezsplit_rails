@@ -34,7 +34,8 @@ class Expense < ApplicationRecord
   end
 
   def current_user_amount
-    amount = expenses_users.where(user_id: Current.user.id).sum(:amount)
-    payer.id == Current.user.id ? amount : -amount
+    # Sums in Ruby so a preloaded expenses_users list costs no extra query.
+    amount = expenses_users.select { |share| share.user_id == Current.user.id }.sum(BigDecimal(0), &:amount)
+    payer_id == Current.user.id ? amount : -amount
   end
 end

@@ -15,6 +15,8 @@ class SessionsController < ApplicationController
 
   def show
     session = find_session_by_cookie
+    User.preload_for_serializer([ session.user ])
+    Group.preload_for_serializer(session.user.groups)
     options = {
       include: [ :groups ],
       params: { current_user: session.user }

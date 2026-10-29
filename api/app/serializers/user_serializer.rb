@@ -17,6 +17,6 @@ class UserSerializer
   has_many :groups, through: :group_memberships
 
   has_many :friends, serializer: UserSerializer do |user|
-    user.all_friends
+    user.serialized_friends
   end
 end

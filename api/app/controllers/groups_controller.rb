@@ -6,6 +6,8 @@ class GroupsController < ApplicationController
   # GET /groups
   def index
     pagy_obj, @groups = pagy(current_user.groups.select("groups.*", "#{Group::ACTIVITY_SQL} AS activity_at").order("activity_at DESC", id: :desc))
+    Group.preload_for_serializer(@groups)
+    User.preload_for_serializer(@groups.flat_map(&:users))
     options = {
       include: [ :users ]
     }
