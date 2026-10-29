@@ -27,7 +27,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2.2" # Match .ruby-version file
+          ruby-version: "3.4.12" # Match .ruby-version file
           working-directory: api
           bundler-cache: true # This runs 'bundle install' and caches gems
 
