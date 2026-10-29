@@ -14,12 +14,12 @@ RSpec.describe InvitationAcceptanceService, type: :service do
 
         expect(result[:success]).to be true
         expect(result[:message]).to eq("User invited successfully.")
-        
+
         invitation.reload
         expect(invitation.status).to eq('accepted')
         expect(invitation.accepted_at).to be_present
         expect(invitation.invited_user).to eq(invited_user)
-        
+
         expect(invited_user.friends).to include(inviter)
         expect(inviter.friends).to include(invited_user)
       end
