@@ -24,9 +24,31 @@ class User < ApplicationRecord
     "#{first_name} #{last_name}"
   end
 
+  attr_writer :preloaded_friends
+
   def all_friends
-    User.where(id: friendships.select(:friend_id))
-        .or(User.where(id: inverse_friendships.select(:user_id)))
+    @preloaded_friends || User.where(id: friendships.select(:friend_id))
+                              .or(User.where(id: inverse_friendships.select(:user_id)))
+  end
+
+  # Fills all_friends for many users with 2 queries in total instead of 1 per user.
+  def self.preload_friends(users)
+    users = users.compact
+    return if users.empty?
+
+    ids = users.map(&:id).uniq
+    pairs = Friendship.where(user_id: ids).or(Friendship.where(friend_id: ids)).pluck(:user_id, :friend_id)
+    friend_ids = Hash.new { |h, k| h[k] = [] }
+    pairs.each do |user_id, friend_id|
+      friend_ids[user_id] << friend_id
+      friend_ids[friend_id] << user_id
+    end
+    friends_by_id = User.where(id: friend_ids.values_at(*ids).flatten.uniq).index_by(&:id)
+
+    users.each do |user|
+      # Sorted by id to match the row order SQLite returns for the all_friends query.
+      user.preloaded_friends = friend_ids[user.id].uniq.sort.filter_map { |id| friends_by_id[id] }
+    end
   end
 
   # Get all expenses with includes for better performance

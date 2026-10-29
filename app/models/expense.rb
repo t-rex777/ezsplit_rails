@@ -13,7 +13,8 @@ class Expense < ApplicationRecord
   validates :currency, inclusion: { in: CURRENCIES, message: "must be INR or USD" }
 
   def current_user_amount
-    amount = expenses_users.where(user_id: Current.user.id).sum(:amount)
-    payer.id == Current.user.id ? amount : -amount
+    # Sums in Ruby so a preloaded expenses_users list costs no extra query.
+    amount = expenses_users.select { |eu| eu.user_id == Current.user.id }.sum(BigDecimal(0), &:amount)
+    payer_id == Current.user.id ? amount : -amount
   end
 end

@@ -2,6 +2,7 @@ class UsersController < ApplicationController
   # GET /users
   def index
     pagy_obj, @users = pagy(current_user.friends)
+    preload_for_serializer(@users)
     options = {
       include: [ :groups ]
     }
@@ -30,6 +31,7 @@ class UsersController < ApplicationController
 
     # Apply pagination
     pagy_obj, @users = pagy(@users, limit: per_page)
+    preload_for_serializer(@users)
 
     options = {
       include: [ :groups ]
@@ -40,6 +42,12 @@ class UsersController < ApplicationController
 
 
   private
+
+  def preload_for_serializer(users)
+    ActiveRecord::Associations::Preloader.new(records: users, associations: { groups: [ :group_memberships, :users ] }).call
+    Group.preload_expense_summaries(users.flat_map(&:groups))
+    User.preload_friends(users)
+  end
 
   def user_params
     params.require(:user).permit(:email_address, :first_name, :last_name)
