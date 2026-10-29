@@ -3,7 +3,9 @@ class GroupsController < ApplicationController
 
   # GET /groups
   def index
-    pagy_obj, @groups = pagy(current_user.groups)
+    pagy_obj, @groups = pagy(current_user.groups.includes(:group_memberships, users: :groups))
+    Group.preload_expense_summaries(@groups)
+    User.preload_friends(@groups.flat_map(&:users))
     options = {
       include: [ :users ]
     }

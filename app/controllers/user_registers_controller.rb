@@ -32,7 +32,7 @@ class UserRegistersController < ApplicationController
     # Use the service to handle invitation acceptance
     service = InvitationAcceptanceService.new(invitation, user, token)
     result = service.call
-        
+
     unless result[:success]
       Rails.logger.error "Failed to accept invitation: #{result[:error]}"
       # Note: We don't fail the user registration if invitation acceptance fails
