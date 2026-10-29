@@ -10,7 +10,30 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_27_100200) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_29_110000) do
+  create_table "activities", force: :cascade do |t|
+    t.integer "actor_id", null: false
+    t.integer "group_id"
+    t.integer "expense_id"
+    t.string "action", null: false
+    t.json "before_snapshot"
+    t.json "after_snapshot"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.integer "settlement_id"
+    t.index ["actor_id"], name: "index_activities_on_actor_id"
+    t.index ["expense_id"], name: "index_activities_on_expense_id"
+    t.index ["group_id", "created_at"], name: "index_activities_on_group_id_and_created_at"
+    t.index ["settlement_id"], name: "index_activities_on_settlement_id"
+  end
+
+  create_table "activity_participants", force: :cascade do |t|
+    t.integer "activity_id", null: false
+    t.integer "user_id", null: false
+    t.index ["activity_id", "user_id"], name: "index_activity_participants_on_activity_id_and_user_id", unique: true
+    t.index ["user_id"], name: "index_activity_participants_on_user_id"
+  end
+
   create_table "categories", force: :cascade do |t|
     t.string "name"
     t.string "icon"
@@ -137,6 +160,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_27_100200) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "activities", "users", column: "actor_id"
+  add_foreign_key "activity_participants", "activities"
+  add_foreign_key "activity_participants", "users"
   add_foreign_key "categories", "users"
   add_foreign_key "expenses", "categories"
   add_foreign_key "expenses", "groups"

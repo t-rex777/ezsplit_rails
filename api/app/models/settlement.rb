@@ -12,6 +12,19 @@ class Settlement < ApplicationRecord
 
   scope :involving, ->(user) { where(payer_id: user.id).or(where(payee_id: user.id)) }
 
+  # A copy for the activity log, with names, so the entry reads on its own.
+  def snapshot
+    {
+      "amount" => amount.to_s,
+      "currency" => currency,
+      "settled_on" => settled_on.to_s,
+      "notes" => notes,
+      "payer" => { "id" => payer.id, "name" => payer.full_name },
+      "payee" => { "id" => payee.id, "name" => payee.full_name },
+      "group" => group && { "id" => group.id, "name" => group.name }
+    }
+  end
+
   private
 
   def payee_is_not_payer

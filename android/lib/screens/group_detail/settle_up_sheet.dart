@@ -6,6 +6,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../../data/settlements_repository.dart';
 import '../../domain/money.dart';
 import '../../domain/settle_plan.dart';
+import '../../state/activity.dart';
 import '../../state/group_detail.dart';
 import '../../state/groups.dart';
 import '../../state/summary.dart';
@@ -160,7 +161,8 @@ class _SettleFormState extends ConsumerState<_SettleForm> {
       ..invalidate(groupBalancesProvider(groupId))
       ..invalidate(groupExpensesProvider)
       ..invalidate(groupProvider(groupId))
-      ..invalidate(groupsProvider);
+      ..invalidate(groupsProvider)
+      ..invalidate(activityFeedProvider);
     invalidateMonthlySummaries(container.invalidate);
     if (mounted) Navigator.of(context).pop(true);
   }

@@ -1,0 +1,377 @@
+{
+  "data": [
+    {
+      "id": "6",
+      "type": "activity",
+      "attributes": {
+        "action": "settled",
+        "expense_id": null,
+        "settlement_id": 1,
+        "created_at": "2026-10-29T15:47:43.421Z",
+        "changed_fields": [],
+        "actor": {
+          "id": 2,
+          "name": "Riya Shah"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": null,
+        "after": {
+          "amount": "500.0",
+          "currency": "INR",
+          "settled_on": "2026-10-29",
+          "notes": "UPI",
+          "payer": {
+            "id": 2,
+            "name": "Riya Shah"
+          },
+          "payee": {
+            "id": 1,
+            "name": "Neha Kapoor"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          }
+        }
+      }
+    },
+    {
+      "id": "5",
+      "type": "activity",
+      "attributes": {
+        "action": "deleted",
+        "expense_id": 3,
+        "settlement_id": null,
+        "created_at": "2026-10-29T15:47:43.413Z",
+        "changed_fields": [],
+        "actor": {
+          "id": 2,
+          "name": "Riya Shah"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": {
+          "name": "Cab to airport",
+          "amount": "1000.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 2,
+          "category": {
+            "id": 3,
+            "name": "Food",
+            "icon": "restaurant",
+            "color": "peach"
+          },
+          "payer": {
+            "id": 2,
+            "name": "Riya Shah"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "500.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "500.0"
+            }
+          ]
+        },
+        "after": null
+      }
+    },
+    {
+      "id": "4",
+      "type": "activity",
+      "attributes": {
+        "action": "created",
+        "expense_id": 3,
+        "settlement_id": null,
+        "created_at": "2026-10-29T15:47:43.409Z",
+        "changed_fields": [],
+        "actor": {
+          "id": 2,
+          "name": "Riya Shah"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": null,
+        "after": {
+          "name": "Cab to airport",
+          "amount": "1000.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 2,
+          "category": {
+            "id": 3,
+            "name": "Food",
+            "icon": "restaurant",
+            "color": "peach"
+          },
+          "payer": {
+            "id": 2,
+            "name": "Riya Shah"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "500.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "500.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3",
+      "type": "activity",
+      "attributes": {
+        "action": "updated",
+        "expense_id": 2,
+        "settlement_id": null,
+        "created_at": "2026-10-29T15:47:43.396Z",
+        "changed_fields": [
+          "amount",
+          "payer",
+          "shares"
+        ],
+        "actor": {
+          "id": 2,
+          "name": "Riya Shah"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": {
+          "name": "Beach dinner",
+          "amount": "2400.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 2,
+          "category": {
+            "id": 3,
+            "name": "Food",
+            "icon": "restaurant",
+            "color": "peach"
+          },
+          "payer": {
+            "id": 1,
+            "name": "Neha Kapoor"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "800.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "800.0"
+            },
+            {
+              "user_id": 3,
+              "name": "Arjun Mehta",
+              "amount": "800.0"
+            }
+          ]
+        },
+        "after": {
+          "name": "Beach dinner",
+          "amount": "3000.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 2,
+          "category": {
+            "id": 3,
+            "name": "Food",
+            "icon": "restaurant",
+            "color": "peach"
+          },
+          "payer": {
+            "id": 2,
+            "name": "Riya Shah"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "750.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "1500.0"
+            },
+            {
+              "user_id": 3,
+              "name": "Arjun Mehta",
+              "amount": "750.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "type": "activity",
+      "attributes": {
+        "action": "created",
+        "expense_id": 2,
+        "settlement_id": null,
+        "created_at": "2026-10-29T15:47:43.388Z",
+        "changed_fields": [],
+        "actor": {
+          "id": 2,
+          "name": "Riya Shah"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": null,
+        "after": {
+          "name": "Beach dinner",
+          "amount": "2400.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 2,
+          "category": {
+            "id": 3,
+            "name": "Food",
+            "icon": "restaurant",
+            "color": "peach"
+          },
+          "payer": {
+            "id": 1,
+            "name": "Neha Kapoor"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "800.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "800.0"
+            },
+            {
+              "user_id": 3,
+              "name": "Arjun Mehta",
+              "amount": "800.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1",
+      "type": "activity",
+      "attributes": {
+        "action": "created",
+        "expense_id": 1,
+        "settlement_id": null,
+        "created_at": "2026-10-29T15:47:43.375Z",
+        "changed_fields": [],
+        "actor": {
+          "id": 1,
+          "name": "Neha Kapoor"
+        },
+        "group": {
+          "id": 1,
+          "name": "Goa trip"
+        },
+        "before": null,
+        "after": {
+          "name": "Coffee",
+          "amount": "100.0",
+          "currency": "INR",
+          "expense_date": "2026-10-26",
+          "split_type": "exact",
+          "notes": null,
+          "creator_id": 1,
+          "category": {
+            "id": 2,
+            "name": "Coffee",
+            "icon": "local_cafe",
+            "color": "amber"
+          },
+          "payer": {
+            "id": 1,
+            "name": "Neha Kapoor"
+          },
+          "group": {
+            "id": 1,
+            "name": "Goa trip"
+          },
+          "shares": [
+            {
+              "user_id": 1,
+              "name": "Neha Kapoor",
+              "amount": "50.0"
+            },
+            {
+              "user_id": 2,
+              "name": "Riya Shah",
+              "amount": "50.0"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "meta": {
+    "total": 6,
+    "current_page": 1,
+    "prev_page": null,
+    "next_page": null,
+    "total_pages": 1
+  }
+}
