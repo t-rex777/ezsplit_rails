@@ -1,0 +1,67 @@
+name: ezsplit
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ezsplit-api:production
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: production
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in api/.env}
+      APP_HOST: ${APP_HOST:?Set APP_HOST in api/.env}
+      SOLID_QUEUE_IN_PUMA: "true"
+      RAILS_LOG_LEVEL: ${RAILS_LOG_LEVEL:-info}
+      SMTP_ADDRESS: ${SMTP_ADDRESS:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      BUCKET_NAME: ${BUCKET_NAME:-}
+      AWS_ENDPOINT_URL_S3: ${AWS_ENDPOINT_URL_S3:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-auto}
+    ports:
+      - "3100:80"
+    volumes:
+      - api_storage:/rails/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -H 'X-Forwarded-Proto: https' http://localhost/up || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 60s
+    command: ["./bin/rake", "litestream:run", "./bin/thrust", "./bin/rails", "server"]
+
+  backup:
+    image: ezsplit-api:production
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    user: "0:0"
+    command: ["./bin/backup-loop"]
+    volumes:
+      - api_storage:/rails/storage:ro
+      - ./backups:/backups
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:?Set NGROK_AUTHTOKEN in api/.env}
+    command:
+      - http
+      - api:80
+      - --url=https://${NGROK_DOMAIN:?Set NGROK_DOMAIN in api/.env}
+      - --log=stdout
+    ports:
+      - "4040:4040"
+
+volumes:
+  api_storage:

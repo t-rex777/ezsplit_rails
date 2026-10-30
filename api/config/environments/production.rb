@@ -60,16 +60,21 @@ Rails.application.configure do
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "example.com"), protocol: "https" }
 
-  # Outgoing mail; set SMTP_* as secrets on the host.
-  config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = {
-      address: ENV["SMTP_ADDRESS"],
-      port: ENV.fetch("SMTP_PORT", 587).to_i,
-      user_name: ENV["SMTP_USERNAME"],
-      password: ENV["SMTP_PASSWORD"],
-      authentication: :plain,
-      enable_starttls_auto: true
-    }
+  # Outgoing mail; set SMTP_* as secrets on the host. Without SMTP, accept
+  # mail without delivering it so sign-up and invitations do not fail.
+  if ENV["SMTP_ADDRESS"].present?
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+        address: ENV["SMTP_ADDRESS"],
+        port: ENV.fetch("SMTP_PORT", 587).to_i,
+        user_name: ENV["SMTP_USERNAME"],
+        password: ENV["SMTP_PASSWORD"],
+        authentication: :plain,
+        enable_starttls_auto: true
+      }
+  else
+    config.action_mailer.delivery_method = :test
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
