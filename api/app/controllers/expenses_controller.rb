@@ -69,6 +69,7 @@ class ExpensesController < ApplicationController
     end
     render json: { message: "Expense was successfully deleted" }, status: :ok
   rescue StandardError => e
+    Rails.error.report(e, context: { controller: controller_name, action: action_name, user_id: current_user.id })
     render json: { errors: [ e.message ] }, status: :unprocessable_entity
   end
 

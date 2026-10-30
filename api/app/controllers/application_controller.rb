@@ -1,5 +1,6 @@
 class ApplicationController < ActionController::Base
   include Authentication
+  include ErrorHandling
   include Pagy::Backend
 
   # as this will be running only in mobile app
