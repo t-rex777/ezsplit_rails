@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_10_29_160801) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_30_120100) do
   create_table "activities", force: :cascade do |t|
     t.integer "actor_id", null: false
     t.integer "group_id"
@@ -32,6 +32,24 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_29_160801) do
     t.integer "user_id", null: false
     t.index ["activity_id", "user_id"], name: "index_activity_participants_on_activity_id_and_user_id", unique: true
     t.index ["user_id"], name: "index_activity_participants_on_user_id"
+  end
+
+  create_table "app_errors", force: :cascade do |t|
+    t.string "fingerprint", null: false
+    t.string "error_class", null: false
+    t.text "message"
+    t.text "backtrace"
+    t.string "severity", null: false
+    t.boolean "handled", default: false, null: false
+    t.string "source"
+    t.json "context", default: {}, null: false
+    t.integer "occurrences", default: 1, null: false
+    t.datetime "first_seen_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fingerprint"], name: "index_app_errors_on_fingerprint", unique: true
+    t.index ["last_seen_at"], name: "index_app_errors_on_last_seen_at"
   end
 
   create_table "categories", force: :cascade do |t|
@@ -122,6 +140,21 @@ ActiveRecord::Schema[8.0].define(version: 2026_10_29_160801) do
     t.index ["invited_user_id"], name: "index_invitations_on_invited_user_id"
     t.index ["inviter_id"], name: "index_invitations_on_inviter_id"
     t.index ["token"], name: "index_invitations_on_token", unique: true
+  end
+
+  create_table "request_metrics", force: :cascade do |t|
+    t.datetime "minute", null: false
+    t.integer "requests", default: 0, null: false
+    t.integer "server_errors", default: 0, null: false
+    t.integer "client_errors", default: 0, null: false
+    t.integer "throttled", default: 0, null: false
+    t.integer "blocked", default: 0, null: false
+    t.float "total_ms", default: 0.0, null: false
+    t.float "max_ms", default: 0.0, null: false
+    t.float "p95_ms", default: 0.0, null: false
+    t.json "statuses", default: {}, null: false
+    t.json "endpoints", default: {}, null: false
+    t.index ["minute"], name: "index_request_metrics_on_minute"
   end
 
   create_table "sessions", force: :cascade do |t|

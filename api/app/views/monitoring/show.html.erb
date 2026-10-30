@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>ezsplit monitoring</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --surface-0: #f4f4f2;
+      --surface-1: #fcfcfb;
+      --border: #e2e1dc;
+      --grid: #ecebe7;
+      --text-primary: #0b0b0b;
+      --text-secondary: #52514e;
+      --text-muted: #73726c;
+      --series-ok: #2a78d6;
+      --series-limited: #eda100;
+      --status-good: #0ca30c;
+      --status-warning: #fab219;
+      --status-critical: #d03b3b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --surface-0: #111110;
+        --surface-1: #1a1a19;
+        --border: #2e2e2c;
+        --grid: #262624;
+        --text-primary: #f0efec;
+        --text-secondary: #c3c2b7;
+        --text-muted: #9a998f;
+        --series-ok: #3987e5;
+        --series-limited: #c98500;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--surface-0); color: var(--text-primary);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+    header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 15px; margin: 0 0 12px; }
+    .live { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--status-good); }
+    .live.stale .dot { background: var(--status-critical); }
+    .spacer { flex: 1; }
+    button {
+      font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
+    }
+    .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .tile .label { color: var(--text-secondary); font-size: 12px; }
+    .tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .tile .note { color: var(--text-muted); font-size: 12px; }
+    .tile.bad .value::before { content: "▲ "; color: var(--status-critical); font-size: 16px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; margin-top: 12px; }
+    .full { margin-top: 12px; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+    .chart-wrap { position: relative; }
+    svg { display: block; width: 100%; height: 220px; }
+    .tooltip {
+      position: absolute; pointer-events: none; display: none; z-index: 2; white-space: nowrap;
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+    }
+    .tooltip b { display: block; margin-bottom: 4px; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-weight: 500; color: var(--text-secondary); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    td { padding: 6px 8px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; vertical-align: top; }
+    td.num, th.num { text-align: right; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .status { white-space: nowrap; }
+    .status.s5::before { content: "● "; color: var(--status-critical); }
+    .status.s4::before { content: "● "; color: var(--status-warning); }
+    .status.s2::before, .status.s3::before { content: "● "; color: var(--status-good); }
+    .muted { color: var(--text-muted); }
+    .empty { color: var(--text-muted); padding: 12px 0; }
+    details.error { border-bottom: 1px solid var(--grid); padding: 8px 0; }
+    details.error summary { cursor: pointer; list-style: none; }
+    details.error summary::-webkit-details-marker { display: none; }
+    .error-title { font-weight: 600; }
+    .error-title::before { content: "⚠ "; color: var(--status-critical); }
+    .error-meta { color: var(--text-muted); font-size: 12px; }
+    pre { white-space: pre-wrap; word-break: break-all; background: var(--surface-0); padding: 8px; border-radius: 6px; font-size: 11px; margin: 8px 0 0; }
+    .pill { display: inline-block; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); font-size: 11px; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ezsplit monitoring</h1>
+    <span class="live" id="live"><span class="dot"></span><span id="live-text">Connecting…</span></span>
+    <span class="spacer"></span>
+    <button id="pause" type="button">Pause</button>
+  </header>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <h2>Requests per minute, last 60 minutes</h2>
+    <div class="legend">
+      <span><span class="swatch" style="background: var(--series-ok)"></span>Handled</span>
+      <span><span class="swatch" style="background: var(--status-critical)"></span>Server errors (5xx)</span>
+      <span><span class="swatch" style="background: var(--series-limited)"></span>Rate limited or blocked</span>
+    </div>
+    <div class="chart-wrap">
+      <svg id="chart" role="img" aria-label="Requests per minute for the last hour"></svg>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+    <details>
+      <summary class="muted">Show as table</summary>
+      <div class="scroll"><table id="series-table"></table></div>
+    </details>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Errors <span class="muted" style="font-weight: 400">· newest first, click for details</span></h2>
+      <div id="errors"></div>
+    </div>
+    <div class="card">
+      <h2>Security events <span class="muted" style="font-weight: 400">· rate limits and bans in this process</span></h2>
+      <div class="scroll"><table id="security"></table></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h2>Busiest endpoints, last hour</h2>
+      <div class="scroll"><table id="endpoints"></table></div>
+    </div>
+    <div class="card">
+      <h2>Status codes, last hour</h2>
+      <div class="scroll"><table id="statuses"></table></div>
+    </div>
+  </section>
+
+  <section class="card full">
+    <h2>Live requests <span class="muted" style="font-weight: 400">· last 50 in this process</span></h2>
+    <div class="scroll"><table id="requests"></table></div>
+  </section>
+</main>
+
+<script>
+  const POLL_MS = 5000;
+  // Built on location.origin: fetch refuses URLs carrying user:password@, which a relative URL inherits.
+  const STATS_URL = new URL("<%= monitoring_path(format: :json) %>", location.origin);
+  let paused = false;
+  let lastSuccess = null;
+  let lastError = null;
+  let report = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (n) => Number(n || 0).toLocaleString();
+  const ms = (n) => `${Number(n || 0).toFixed(0)} ms`;
+  const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const ago = (iso) => {
+    const seconds = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000));
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`;
+    return `${Math.round(seconds / 86400)}d ago`;
+  };
+  const statusCell = (status) => `<span class="status s${String(status)[0]}">${esc(status)}</span>`;
+  const table = (headers, rows, emptyText) => {
+    if (!rows.length) return `<tr><td class="empty">${esc(emptyText)}</td></tr>`;
+    const head = headers.map(([label, cls]) => `<th class="${cls || ""}">${esc(label)}</th>`).join("");
+    return `<thead><tr>${head}</tr></thead><tbody>${rows.join("")}</tbody>`;
+  };
+
+  function renderTiles(t) {
+    const tiles = [
+      ["Requests, last hour", num(t.requests), `${num(t.requests_this_minute)} this minute`],
+      ["Server error rate", `${t.error_rate}%`, `${num(t.server_errors)} responses were 5xx`, t.error_rate >= 1],
+      ["Average response", ms(t.avg_ms), `worst minute p95: ${ms(t.worst_p95_ms)}`],
+      ["Client errors (4xx)", num(t.client_errors), "bad input, auth, not found"],
+      ["Rate limited / blocked", `${num(t.throttled)} / ${num(t.blocked)}`, "429 and 403 responses", t.blocked > 0],
+      ["Error types, last hour", num(t.active_errors), "distinct errors seen", t.active_errors > 0],
+    ];
+    $("tiles").innerHTML = tiles.map(([label, value, note, bad]) =>
+      `<div class="card tile${bad ? " bad" : ""}"><div class="label">${esc(label)}</div><div class="value">${esc(value)}</div><div class="note">${esc(note)}</div></div>`
+    ).join("");
+  }
+
+  // Stacked bars: handled at the base, 5xx above, rate limited on top. Top segment gets the rounded end.
+  function renderChart(series) {
+    const svg = $("chart");
+    const width = svg.clientWidth || 800;
+    const height = 220;
+    const pad = { top: 8, right: 8, bottom: 22, left: 40 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const max = Math.max(4, ...series.map((m) => m.requests));
+    // Whole-number gridlines, four steps tall, with a step that reads well (6, 20, 250…).
+    const raw = max / 4;
+    const magnitude = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 3, 4, 5, 6, 8, 10].map((f) => f * magnitude).find((s) => s >= raw && Number.isInteger(s));
+    const niceMax = step * 4;
+    const slot = plotW / series.length;
+    const barW = Math.max(2, slot - 2);
+    const y = (v) => pad.top + plotH - (v / niceMax) * plotH;
+    const css = getComputedStyle(document.documentElement);
+    const colors = {
+      ok: css.getPropertyValue("--series-ok"),
+      err: css.getPropertyValue("--status-critical"),
+      lim: css.getPropertyValue("--series-limited"),
+    };
+
+    let out = "";
+    for (let i = 0; i <= 4; i++) {
+      const v = (niceMax / 4) * i;
+      out += `<line x1="${pad.left}" x2="${width - pad.right}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`;
+      out += `<text x="${pad.left - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--text-muted)">${num(v)}</text>`;
+    }
+
+    series.forEach((m, i) => {
+      const handled = Math.max(0, m.requests - m.server_errors - m.rate_limited);
+      const parts = [[handled, colors.ok], [m.server_errors, colors.err], [m.rate_limited, colors.lim]].filter(([v]) => v > 0);
+      const x = pad.left + i * slot + (slot - barW) / 2;
+      let base = 0;
+      parts.forEach(([v, color], index) => {
+        const y0 = y(base), y1 = y(base + v);
+        const gap = index > 0 ? 2 : 0;
+        const h = Math.max(1, y0 - y1 - gap);
+        const top = y0 - gap - h;
+        const r = index === parts.length - 1 ? Math.min(4, barW / 2, h) : 0;
+        out += `<path fill="${color}" d="M${x},${y0 - gap} V${top + r} Q${x},${top} ${x + r},${top} H${x + barW - r} Q${x + barW},${top} ${x + barW},${top + r} V${y0 - gap} Z"/>`;
+        base += v;
+      });
+      if (i % 10 === 0 || i === series.length - 1) {
+        const label = i === series.length - 1 ? "now" : `-${series.length - 1 - i}m`;
+        out += `<text x="${x + barW / 2}" y="${height - 6}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${label}</text>`;
+      }
+      // Hit target covers the whole column, not just the bar.
+      out += `<rect data-i="${i}" x="${pad.left + i * slot}" y="${pad.top}" width="${slot}" height="${plotH}" fill="transparent"/>`;
+    });
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.innerHTML = out;
+  }
+
+  function showTooltip(event) {
+    const i = event.target.dataset?.i;
+    const tip = $("tooltip");
+    if (i === undefined || !report) { tip.style.display = "none"; return; }
+    const m = report.series[i];
+    tip.innerHTML = `<b>${esc(clock(m.minute).slice(0, 5))}</b>
+      ${num(m.requests)} requests<br>
+      ${num(m.server_errors)} server errors<br>
+      ${num(m.rate_limited)} rate limited or blocked<br>
+      p95 ${ms(m.p95_ms)}`;
+    const wrap = $("chart").parentElement.getBoundingClientRect();
+    const left = Math.min(event.clientX - wrap.left + 12, wrap.width - 190);
+    tip.style.left = `${Math.max(0, left)}px`;
+    tip.style.top = `${event.clientY - wrap.top + 12}px`;
+    tip.style.display = "block";
+  }
+
+  function renderSeriesTable(series) {
+    const rows = series.filter((m) => m.requests > 0).reverse().map((m) =>
+      `<tr><td>${esc(clock(m.minute).slice(0, 5))}</td><td class="num">${num(m.requests)}</td><td class="num">${num(m.server_errors)}</td><td class="num">${num(m.rate_limited)}</td><td class="num">${ms(m.p95_ms)}</td></tr>`);
+    $("series-table").innerHTML = table([["Minute"], ["Requests", "num"], ["5xx", "num"], ["Limited", "num"], ["p95", "num"]], rows, "No traffic in the last hour.");
+  }
+
+  function renderErrors(errors) {
+    if (!errors.length) { $("errors").innerHTML = `<div class="empty">No errors recorded. 🎉</div>`; return; }
+    const open = new Set([...document.querySelectorAll("details.error[open]")].map((d) => d.dataset.id));
+    $("errors").innerHTML = errors.map((e) => {
+      const where = [e.context.method, e.context.path].filter(Boolean).join(" ") || [e.context.controller, e.context.action].filter(Boolean).join("#") || e.source || "";
+      const context = Object.entries(e.context).map(([k, v]) => `${k}: ${v}`).join("\n");
+      return `<details class="error" data-id="${e.id}"${open.has(String(e.id)) ? " open" : ""}>
+        <summary>
+          <div class="error-title">${esc(e.error_class)} <span class="pill">${num(e.occurrences)}×</span> ${e.handled ? '<span class="pill">handled</span>' : ""}</div>
+          <div>${esc(e.message).slice(0, 200)}</div>
+          <div class="error-meta">${esc(where)} · last ${esc(ago(e.last_seen_at))} · first ${esc(ago(e.first_seen_at))}</div>
+        </summary>
+        <pre>${esc(context)}</pre>
+        <pre>${esc(e.backtrace)}</pre>
+      </details>`;
+    }).join("");
+  }
+
+  function renderSecurity(events) {
+    const rows = events.map((e) =>
+      `<tr><td>${esc(clock(e.at))}</td><td>${e.type === "blocklist" ? "⛔ banned" : "⏱ throttled"}</td><td>${esc(e.rule)}</td><td class="mono">${esc(e.ip)}</td><td class="mono">${esc(e.path)}</td></tr>`);
+    $("security").innerHTML = table([["Time"], ["Action"], ["Rule"], ["IP"], ["Path"]], rows, "Nothing rate limited or blocked yet.");
+  }
+
+  function renderEndpoints(endpoints) {
+    const rows = endpoints.map((e) =>
+      `<tr><td class="mono">${esc(e.endpoint)}</td><td class="num">${num(e.count)}</td><td class="num">${num(e.errors)}</td><td class="num">${ms(e.avg_ms)}</td></tr>`);
+    $("endpoints").innerHTML = table([["Endpoint"], ["Requests", "num"], ["5xx", "num"], ["Avg", "num"]], rows, "No traffic in the last hour.");
+  }
+
+  function renderStatuses(statuses) {
+    const rows = Object.entries(statuses).map(([status, count]) => `<tr><td>${statusCell(status)}</td><td class="num">${num(count)}</td></tr>`);
+    $("statuses").innerHTML = table([["Status"], ["Responses", "num"]], rows, "No traffic in the last hour.");
+  }
+
+  function renderRequests(requests) {
+    const rows = requests.map((r) =>
+      `<tr><td>${esc(clock(r.at))}</td><td>${esc(r.method)}</td><td class="mono">${esc(r.path)}</td><td>${statusCell(r.status)}</td><td class="num">${ms(r.duration_ms)}</td><td class="mono">${esc(r.ip)}</td><td>${r.user_id ? `#${esc(r.user_id)}` : '<span class="muted">guest</span>'}</td></tr>`);
+    $("requests").innerHTML = table([["Time"], ["Method"], ["Path"], ["Status"], ["Time taken", "num"], ["IP"], ["User"]], rows, "Waiting for traffic…");
+  }
+
+  function render() {
+    renderTiles(report.totals);
+    renderChart(report.series);
+    renderSeriesTable(report.series);
+    renderErrors(report.errors);
+    renderSecurity(report.security_events);
+    renderEndpoints(report.endpoints);
+    renderStatuses(report.statuses);
+    renderRequests(report.recent_requests);
+  }
+
+  function updateLiveLabel() {
+    const live = $("live");
+    const stale = lastError || !lastSuccess || Date.now() - lastSuccess > POLL_MS * 3;
+    live.classList.toggle("stale", stale && !paused);
+    let text = "Connecting…";
+    if (paused) text = "Paused";
+    else if (lastError) text = `Update failed (${lastError}), retrying…`;
+    else if (lastSuccess) text = `Live · updated ${ago(new Date(lastSuccess).toISOString())}`;
+    $("live-text").textContent = text;
+  }
+
+  async function poll() {
+    if (!paused) {
+      try {
+        const response = await fetch(STATS_URL, { headers: { Accept: "application/json" }, credentials: "same-origin" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        report = await response.json();
+        lastSuccess = Date.now();
+        lastError = null;
+        render();
+      } catch (error) {
+        lastError = error.message;
+      }
+    }
+    updateLiveLabel();
+    setTimeout(poll, POLL_MS);
+  }
+
+  $("pause").addEventListener("click", () => {
+    paused = !paused;
+    $("pause").textContent = paused ? "Resume" : "Pause";
+    updateLiveLabel();
+  });
+  $("chart").addEventListener("mousemove", showTooltip);
+  $("chart").addEventListener("mouseleave", () => { $("tooltip").style.display = "none"; });
+  window.addEventListener("resize", () => report && renderChart(report.series));
+  setInterval(updateLiveLabel, 1000);
+  poll();
+</script>
+</body>
+</html>
