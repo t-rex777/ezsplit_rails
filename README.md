@@ -100,6 +100,77 @@ cd android && flutter run
 
 The app calls `http://localhost:3100` by default. Change it with `--dart-define=API_BASE_URL=...`. Release builds refuse any address that is not `https`.
 
+### Run the API in Docker with ngrok
+
+The API can run as the production image and be reached from anywhere through a static ngrok tunnel.
+
+1. Fill in `api/.env`:
+   - `SECRET_KEY_BASE`: output of `openssl rand -hex 64`
+   - `NGROK_AUTHTOKEN`: from the ngrok dashboard
+   - `NGROK_DOMAIN`: your static domain, e.g. `ezsplit.ngrok-free.dev`
+   - `APP_HOST`: the same domain
+2. Start the stack:
+
+   ```bash
+   cd api
+   docker compose up --build -d
+   ```
+
+3. Check it:
+
+   ```bash
+   curl -fsS https://<your-static-domain>/up
+   docker compose logs -f ngrok
+   ```
+
+   The ngrok dashboard is at `http://localhost:4040`.
+
+4. Point the phone app at the tunnel:
+
+   ```bash
+   cd android
+   flutter run --dart-define=API_BASE_URL=https://<your-static-domain>
+   ```
+
+   Release builds accept HTTPS addresses only, so the ngrok URL works.
+
+The API stores SQLite in the `api_storage` Docker volume. The `backup` container writes a consistent copy to `api/backups/` once a day and keeps 14 days.
+
+#### Off-site backup to Cloudflare R2
+
+Litestream continuously replicates the SQLite files to R2 and restores them automatically if the Docker volume is empty.
+
+1. In the Cloudflare dashboard, open **R2** and create a bucket named `ezsplit-backups`.
+2. Create an R2 API token with **Object Read & Write**, scoped to that bucket.
+3. Fill these values in `api/.env`:
+
+   ```env
+   BUCKET_NAME=ezsplit-backups
+   AWS_ENDPOINT_URL_S3=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+   AWS_ACCESS_KEY_ID=<token access key>
+   AWS_SECRET_ACCESS_KEY=<token secret>
+   AWS_REGION=auto
+   ```
+
+4. Recreate the API container and check the logs:
+
+   ```bash
+   docker compose up -d --force-recreate api
+   docker compose logs -f api
+   ```
+
+   Look for Litestream opening the replica. Backups appear under `storage/` in the bucket.
+
+To test a restore, remove the volume and start again; Litestream restores the latest snapshot before Rails boots:
+
+```bash
+docker compose down
+docker volume rm ezsplit_api_storage
+docker compose up -d
+```
+
+Only do that when you are sure the R2 copy is current.
+
 ### Test on phones over Wi-Fi
 
 Run the API on your Mac so other devices on the same Wi-Fi can reach it. Find the Mac's address with `ipconfig getifaddr en0`; the examples use `192.168.1.4`.

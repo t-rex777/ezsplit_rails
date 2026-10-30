@@ -14,6 +14,7 @@ dbs:
       - type: s3
         endpoint: $AWS_ENDPOINT_URL_S3
         bucket: $BUCKET_NAME
+        region: $AWS_REGION
         path: storage/<%= File.basename(db) %>
         access-key-id: $AWS_ACCESS_KEY_ID
         secret-access-key: $AWS_SECRET_ACCESS_KEY
@@ -38,7 +39,7 @@ namespace :litestream do
     end
 
     @dbs.each do |db|
-      next if File.exist?(db) || !ENV["BUCKET_NAME"]
+      next if File.exist?(db) || ENV["BUCKET_NAME"].blank?
       system "litestream restore -config #{LITESTREAM_CONFIG} -if-replica-exists #{db}"
       exit $?.exitstatus unless $?.exitstatus == 0
     end
@@ -47,7 +48,7 @@ namespace :litestream do
   task :run do
     require "shellwords"
 
-    if ENV["BUCKET_NAME"]
+    if ENV["BUCKET_NAME"].present?
       exec(*%w[bundle exec litestream replicate -config],
         LITESTREAM_CONFIG, "-exec", Shellwords.join(ARGV[1..]))
     else
