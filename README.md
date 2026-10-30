@@ -197,11 +197,20 @@ cd api && mise exec ruby@3.2.2 -- bundle exec rspec
 cd android && flutter test
 ```
 
+## Branching and deployment
+
+- `main` is the integration branch. Merge feature work into `main` through PRs.
+- `production` is protected. Direct pushes are blocked; open a PR from `main` to `production`.
+- Merging into `production` runs `.github/workflows/deploy-production.yml` on the self-hosted macOS runner. It pulls the latest `production`, rebuilds the Docker image, restarts the stack, and checks `/up`.
+- The self-hosted runner must be online on the Mac that hosts Docker.
+- A PR into `production` from anything other than `main` fails the `Production PR guard` check.
+- Fly.io automatic deploys are disabled. Run the **Fly Deploy (manual)** workflow if you intentionally want to deploy to Fly.
+
 ## Releases
 
-Every merge into `dev` that changes `android/` builds a signed APK. The workflow `.github/workflows/android-apk.yml` attaches it to a GitHub pre-release named `dev-<run number>`.
+Every push to `production` that changes `android/` builds a signed APK. The workflow `.github/workflows/android-apk.yml` attaches it to a GitHub pre-release named `production-<run number>`.
 
-To install it: open the repo's **Releases** page on your phone, download the newest `ezsplit-dev-*.apk`, and open it. Each build has a higher build number, so it installs over the last one.
+To install it: open the repo's **Releases** page on your phone, download the newest `ezsplit-production-*.apk`, and open it. Each build has a higher build number, so it installs over the last one.
 
 ### One-time setup
 
@@ -223,4 +232,4 @@ The workflow needs one repository variable and four secrets. Without them the bu
    | `ANDROID_KEY_ALIAS` | Secret | `ezsplit` |
    | `ANDROID_KEY_PASSWORD` | Secret | The key password |
 
-The API workflows (RSpec, Rubocop, Brakeman, Fly deploy) run only when `api/` changes.
+The API workflows (RSpec, Rubocop, Brakeman) run only when `api/` changes.

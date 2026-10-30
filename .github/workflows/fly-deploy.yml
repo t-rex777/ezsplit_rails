@@ -1,11 +1,10 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
+# Manual only. Production deploys run on the self-hosted Mac runner via
+# deploy-production.yml. Use this workflow only when you intentionally want
+# to push the API to Fly.io.
 
-name: Fly Deploy
+name: Fly Deploy (manual)
 on:
-  push:
-    branches:
-      - main
-    paths: ["api/**", ".github/workflows/fly-deploy.yml"]
+  workflow_dispatch:
 jobs:
   deploy:
     name: Deploy app

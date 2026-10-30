@@ -1,0 +1,47 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: [self-hosted, macOS, ARM64, ezsplit-prod]
+    timeout-minutes: 30
+    env:
+      PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    steps:
+      - name: Pull production and rebuild Docker
+        run: |
+          set -euo pipefail
+          cd /Users/manish/Documents/personal/ezsplit_rails
+          git fetch origin production
+          git checkout production
+          git pull --ff-only origin production
+          cd api
+          docker compose up -d --build --remove-orphans
+          docker image prune -f
+
+      - name: Wait for health
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if /usr/bin/curl -fsS -H 'X-Forwarded-Proto: https' http://localhost:3100/up >/dev/null; then
+              echo "API healthy after ${attempt} attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API did not become healthy."
+          cd /Users/manish/Documents/personal/ezsplit_rails/api
+          docker compose logs --tail=100 api
+          exit 1
