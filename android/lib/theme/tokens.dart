@@ -8,6 +8,30 @@ const double kSheetRadius = 22;
 const double kShadowOffset = 4;
 const double kMinTap = 44;
 
+/// Category colours for charts, in fixed order: slot 1 goes to the biggest
+/// category. Checked as a set for colour-blind separation on each card colour;
+/// the pastel accents fail that check, so charts don't use them.
+const List<Color> chartSlotsLight = [
+  Color(0xFF2A78D6),
+  Color(0xFFEB6834),
+  Color(0xFF1BAF7A),
+  Color(0xFFEDA100),
+  Color(0xFFE87BA4),
+  Color(0xFF6250D6),
+];
+const List<Color> chartSlotsDark = [
+  Color(0xFF3987E5),
+  Color(0xFFD95926),
+  Color(0xFF199E70),
+  Color(0xFFC98500),
+  Color(0xFFD55181),
+  Color(0xFF9085E9),
+];
+
+/// Everything past the chart slots, drawn as one "Other".
+const Color chartOtherLight = Color(0xFFD3D1C7);
+const Color chartOtherDark = Color(0xFF8A8880);
+
 /// Text and icons on coloured fills (accents and disabled grey), both modes.
 const Color onAccent = Color(0xFF111111);
 

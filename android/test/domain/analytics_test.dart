@@ -40,19 +40,33 @@ void main() {
   });
 
   test('foldSmall folds categories under 5% into Other', () {
-    final split = foldSmall([
-      cat('Food', 9000),
-      cat('A', 300),
-      cat('B', 200),
-      cat('Rent', 500),
-    ]);
+    final split = foldSmall(
+      [cat('Food', 9000), cat('A', 300), cat('B', 200), cat('Rent', 500)],
+      keep: {'food', 'a', 'b', 'rent'},
+    );
     expect(split.big.map((c) => c.name), ['Food', 'Rent']);
     expect(split.otherPaise, 500);
     expect(split.otherCount, 2);
   });
 
+  test(
+    'foldSmall puts categories without a colour into Other, however big',
+    () {
+      final split = foldSmall(
+        [cat('Food', 5000), cat('Rent', 4000), cat('Tea', 1000)],
+        keep: {'food'},
+      );
+      expect(split.big.map((c) => c.name), ['Food']);
+      expect(split.otherPaise, 5000);
+      expect(split.otherCount, 2);
+    },
+  );
+
   test('foldSmall keeps a lone small category under its own name', () {
-    final split = foldSmall([cat('Food', 9700), cat('Tea', 300)]);
+    final split = foldSmall(
+      [cat('Food', 9700), cat('Tea', 300)],
+      keep: {'food', 'tea'},
+    );
     expect(split.big.map((c) => c.name), ['Food', 'Tea']);
     expect(split.otherCount, 0);
   });

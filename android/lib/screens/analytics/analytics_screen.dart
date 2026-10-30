@@ -17,22 +17,20 @@ import '../groups/group_widgets.dart';
 import 'charts.dart';
 import 'filters_sheet.dart';
 
-/// Fill for each category key. Server colours are light-palette pastels, so
-/// dark mode cycles its own fills by rank, as the dashboard does.
-Map<String, Color> categoryColors(
-  BuildContext context,
-  List<CategorySpend> ranked,
-) {
-  final c = context.ez;
+/// Chart colour for each category key in [slotKeys], in slot order.
+Map<String, Color> categoryColors(BuildContext context, List<String> slotKeys) {
   final dark = Theme.of(context).brightness == Brightness.dark;
-  final darkFills = [c.green, c.peach, c.mint, c.lilac];
+  final slots = dark ? chartSlotsDark : chartSlotsLight;
   return {
-    for (var i = 0; i < ranked.length; i++)
-      categoryKey(ranked[i].name): dark
-          ? darkFills[i % darkFills.length]
-          : parseHexColor(ranked[i].color, c.amber),
+    for (var i = 0; i < slotKeys.length && i < slots.length; i++)
+      slotKeys[i]: slots[i],
   };
 }
+
+Color chartOther(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? chartOtherDark
+    : chartOtherLight;
 
 String monthTitle(DateTime month) => DateFormat('MMMM y').format(month);
 
@@ -87,15 +85,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     } else {
       final months = withoutCategories(all, filters.hidden);
-      final ranked = rankedCategories(months);
-      if (ranked.isEmpty) {
+      final shown = rankedCategories(months);
+      if (shown.isEmpty) {
         body = _Empty(scope: filters.scope);
       } else {
         final index = _picked == null
             ? null
             : months.indexWhere((m) => m.month == _picked);
         final picked = index == null || index < 0 ? null : index;
-        final colors = categoryColors(context, ranked);
+        // Slots follow the unfiltered ranking, so unticking a category never
+        // repaints the others.
+        final slotKeys = [
+          for (final c in rankedCategories(all).take(chartSlots))
+            categoryKey(c.name),
+        ];
+        final colors = categoryColors(context, slotKeys);
+        final names = {for (final c in shown) categoryKey(c.name): c.name};
+        final order = [
+          for (final k in slotKeys)
+            if (names.containsKey(k)) k,
+        ];
+        final hasOther = shown.length > order.length;
         body = Opacity(
           opacity: async.isLoading ? 0.5 : 1,
           child: Column(
@@ -103,7 +113,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             children: [
               _ChartCard(
                 months: months,
-                ranked: ranked,
+                legend: [
+                  for (final k in order) (name: names[k]!, color: colors[k]!),
+                  if (hasOther) (name: 'Other', color: chartOther(context)),
+                ],
+                order: order,
                 colors: colors,
                 picked: picked,
                 onSelect: (i) => setState(
@@ -117,6 +131,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 _MonthCard(
                   months: months,
                   index: picked,
+                  keep: order.toSet(),
                   colors: colors,
                   onClose: () => setState(() => _picked = null),
                 ),
@@ -224,14 +239,16 @@ class _FiltersButton extends StatelessWidget {
 class _ChartCard extends StatelessWidget {
   const _ChartCard({
     required this.months,
-    required this.ranked,
+    required this.legend,
+    required this.order,
     required this.colors,
     required this.picked,
     required this.onSelect,
   });
 
   final List<AnalyticsMonth> months;
-  final List<CategorySpend> ranked;
+  final List<({String name, Color color})> legend;
+  final List<String> order;
   final Map<String, Color> colors;
   final int? picked;
   final ValueChanged<int> onSelect;
@@ -268,8 +285,9 @@ class _ChartCard extends StatelessWidget {
           const SizedBox(height: 8),
           MonthlyBarChart(
             months: months,
-            order: [for (final c in ranked) categoryKey(c.name)],
+            order: order,
             colors: colors,
+            other: chartOther(context),
             selected: picked,
             onSelect: onSelect,
           ),
@@ -279,13 +297,13 @@ class _ChartCard extends StatelessWidget {
               spacing: 12,
               runSpacing: 6,
               children: [
-                for (final c in ranked)
+                for (final l in legend)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _Swatch(color: colors[categoryKey(c.name)]!, size: 12),
+                      _Swatch(color: l.color, size: 12),
                       const SizedBox(width: 5),
-                      Text(c.name, style: text.labelSmall),
+                      Text(l.name, style: text.labelSmall),
                     ],
                   ),
               ],
@@ -391,7 +409,7 @@ class _Overview extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 label: 'Monthly average',
-                value: formatRupees(averagePaise(months)),
+                value: formatWholeRupees(averagePaise(months)),
                 detail: counted == 1 ? 'last month' : 'last $counted months',
                 color: c.green,
               ),
@@ -400,7 +418,7 @@ class _Overview extends StatelessWidget {
             Expanded(
               child: _StatCard(
                 label: 'Highest month',
-                value: formatRupees(highest.totalPaise),
+                value: formatWholeRupees(highest.totalPaise),
                 detail: monthTitle(highest.month),
                 color: c.mint,
               ),
@@ -472,12 +490,16 @@ class _MonthCard extends StatelessWidget {
   const _MonthCard({
     required this.months,
     required this.index,
+    required this.keep,
     required this.colors,
     required this.onClose,
   });
 
   final List<AnalyticsMonth> months;
   final int index;
+
+  /// Category keys with their own colour.
+  final Set<String> keep;
   final Map<String, Color> colors;
   final VoidCallback onClose;
 
@@ -486,7 +508,8 @@ class _MonthCard extends StatelessWidget {
     final c = context.ez;
     final text = Theme.of(context).textTheme;
     final month = months[index];
-    final split = foldSmall(month.categories);
+    final split = foldSmall(month.categories, keep: keep);
+    final other = chartOther(context);
     final total = month.totalPaise;
     final before = index > 0 ? months[index - 1] : null;
     final diff = before == null ? null : total - before.totalPaise;
@@ -540,7 +563,7 @@ class _MonthCard extends StatelessWidget {
                     for (final s in split.big)
                       (paise: s.paise, color: colors[categoryKey(s.name)]!),
                     if (split.otherCount > 0)
-                      (paise: split.otherPaise, color: EzColors.disabled),
+                      (paise: split.otherPaise, color: other),
                   ],
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -549,7 +572,7 @@ class _MonthCard extends StatelessWidget {
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          formatRupees(total),
+                          formatWholeRupees(total),
                           softWrap: false,
                           style: text.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -558,7 +581,7 @@ class _MonthCard extends StatelessWidget {
                       ),
                       if (diff != null && diff != 0)
                         Text(
-                          '${diff > 0 ? '↑' : '↓'} ${formatRupees(diff.abs())} vs ${DateFormat('MMM').format(before!.month)}',
+                          '${diff > 0 ? '↑' : '↓'} ${formatWholeRupees(diff.abs())} vs ${DateFormat('MMM').format(before!.month)}',
                           style: text.labelSmall,
                           textAlign: TextAlign.center,
                         ),
@@ -597,9 +620,10 @@ class _MonthCard extends StatelessWidget {
               ),
             if (split.otherCount > 0)
               _CategoryRow(
-                name: 'Other · ${split.otherCount} small',
+                name:
+                    'Other · ${split.otherCount} ${split.otherCount == 1 ? 'category' : 'categories'}',
                 icon: 'more_horiz',
-                color: EzColors.disabled,
+                color: other,
                 percent: percent(split.otherPaise),
                 paise: split.otherPaise,
               ),
@@ -650,7 +674,7 @@ class _CategoryRow extends StatelessWidget {
           Text(percent, style: text.bodySmall),
           const SizedBox(width: 10),
           Text(
-            formatRupees(paise),
+            formatWholeRupees(paise),
             style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           SizedBox(
@@ -665,7 +689,7 @@ class _CategoryRow extends StatelessWidget {
     if (onTap == null) return row;
     return Semantics(
       button: true,
-      label: '$name, $percent, ${formatRupees(paise)}',
+      label: '$name, $percent, ${formatWholeRupees(paise)}',
       excludeSemantics: true,
       child: InkWell(onTap: onTap, child: row),
     );

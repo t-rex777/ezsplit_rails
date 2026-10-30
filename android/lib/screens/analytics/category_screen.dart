@@ -51,7 +51,7 @@ class AnalyticsCategoryScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      formatRupees(
+                      formatWholeRupees(
                         list.fold(0, (sum, e) => sum + e.mySharePaise),
                       ),
                       style: text.headlineMedium?.copyWith(

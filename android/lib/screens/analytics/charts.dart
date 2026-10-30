@@ -45,26 +45,86 @@ String compactRupees(int paise) {
 
 /// One stacked bar per month, oldest on the left, with a trend line over the
 /// tops. Scrolls sideways and opens on the newest month.
-class MonthlyBarChart extends StatelessWidget {
+class MonthlyBarChart extends StatefulWidget {
   const MonthlyBarChart({
     super.key,
     required this.months,
     required this.order,
     required this.colors,
+    required this.other,
     required this.selected,
     required this.onSelect,
   });
 
   final List<AnalyticsMonth> months;
 
-  /// Category keys, bottom of the bar first.
+  /// Category keys with their own colour, bottom of the bar first. The rest of
+  /// each month stacks on top as [other].
   final List<String> order;
   final Map<String, Color> colors;
+  final Color other;
   final int? selected;
   final ValueChanged<int> onSelect;
 
   @override
+  State<MonthlyBarChart> createState() => _MonthlyBarChartState();
+}
+
+class _MonthlyBarChartState extends State<MonthlyBarChart> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _revealSelected();
+  }
+
+  @override
+  void didUpdateWidget(MonthlyBarChart old) {
+    super.didUpdateWidget(old);
+    if (old.selected != widget.selected ||
+        old.months.length != widget.months.length) {
+      _revealSelected();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Scrolls the picked bar into view when it is off screen, for example after
+  /// a filter change rebuilds the chart at the newest month.
+  void _revealSelected() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final i = widget.selected;
+      if (i == null || !_scroll.hasClients) return;
+      final position = _scroll.position;
+      final width = widget.months.length * _step;
+      // The list is reversed, so offset 0 shows the right end.
+      final left = width - position.pixels - position.viewportDimension;
+      final barLeft = i * _step;
+      if (barLeft >= left &&
+          barLeft + _step <= left + position.viewportDimension) {
+        return;
+      }
+      final target =
+          width - barLeft - _step / 2 - position.viewportDimension / 2;
+      _scroll.jumpTo(
+        target.clamp(position.minScrollExtent, position.maxScrollExtent),
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final months = widget.months;
+    final order = widget.order;
+    final colors = widget.colors;
+    final other = widget.other;
+    final selected = widget.selected;
+    final onSelect = widget.onSelect;
     final c = context.ez;
     final text = Theme.of(context).textTheme;
     final top = niceTopPaise(
@@ -94,6 +154,7 @@ class MonthlyBarChart extends StatelessWidget {
         ),
         Expanded(
           child: SingleChildScrollView(
+            controller: _scroll,
             scrollDirection: Axis.horizontal,
             reverse: true,
             child: SizedBox(
@@ -114,6 +175,7 @@ class MonthlyBarChart extends StatelessWidget {
                         dot: c.card,
                         pillText: c.bg,
                         labelStyle: labelStyle ?? const TextStyle(),
+                        other: other,
                       ),
                     ),
                   ),
@@ -163,6 +225,7 @@ class _BarsPainter extends CustomPainter {
     required this.dot,
     required this.pillText,
     required this.labelStyle,
+    required this.other,
   });
 
   final List<AnalyticsMonth> months;
@@ -175,6 +238,7 @@ class _BarsPainter extends CustomPainter {
   final Color dot;
   final Color pillText;
   final TextStyle labelStyle;
+  final Color other;
 
   double _y(int paise) => _plotTop + _plotHeight - paise * _plotHeight / top;
 
@@ -208,13 +272,23 @@ class _BarsPainter extends CustomPainter {
           x + _barWidth,
           _y(acc),
         );
-        final color = colors[key] ?? EzColors.disabled;
+        final color = colors[key] ?? other;
         canvas.drawRect(
           rect,
           Paint()..color = faded ? color.withValues(alpha: 0.35) : color,
         );
         canvas.drawRect(rect, outline);
         acc += c.paise;
+      }
+      final rest = m.totalPaise - acc;
+      if (rest > 0) {
+        final rect = Rect.fromLTRB(x, _y(acc + rest), x + _barWidth, _y(acc));
+        canvas.drawRect(
+          rect,
+          Paint()..color = faded ? other.withValues(alpha: 0.35) : other,
+        );
+        canvas.drawRect(rect, outline);
+        acc += rest;
       }
       if (i == selected) {
         canvas.drawRRect(

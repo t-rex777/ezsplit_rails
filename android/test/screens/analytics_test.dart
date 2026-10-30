@@ -10,6 +10,11 @@ import 'package:material_symbols_icons/symbols.dart';
 import '../support/fakes.dart';
 import '../support/harness.dart';
 
+extension on CategorySpend {
+  CategorySpend copyWithPaise(int paise) =>
+      CategorySpend(name: name, icon: icon, color: color, paise: paise);
+}
+
 const food = CategorySpend(
   name: 'Food',
   icon: 'restaurant',
@@ -268,5 +273,44 @@ void main() {
     await tester.tap(find.text('Try again'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('bar-2026-10')), findsOneWidget);
+  });
+
+  testWidgets('a picked old month stays in view after a filter change', (
+    tester,
+  ) async {
+    final long = [
+      for (var i = 0; i < 24; i++)
+        AnalyticsMonth(
+          month: DateTime(2024, 11 + i),
+          totalPaise: 100000 + i * 1000,
+          categories: [food.copyWithPaise(100000 + i * 1000)],
+        ),
+    ];
+    await pumpAnalytics(
+      tester,
+      FakeAnalyticsRepository(
+        byScope: {AnalyticsScope.all: long, AnalyticsScope.personal: long},
+      ),
+    );
+    const first = ValueKey('bar-2024-11');
+    expect(find.byKey(first).hitTestable(), findsNothing);
+    await tester.fling(
+      find.byKey(const ValueKey('bar-2026-10')),
+      const Offset(2000, 0),
+      3000,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(first));
+    await tester.pumpAndSettle();
+    expect(find.text('November 2024'), findsOneWidget);
+
+    await tester.tap(find.text('Filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(BrutalPill, 'Personal'));
+    await tester.pump();
+    await applyFilters(tester);
+
+    expect(find.text('November 2024'), findsOneWidget);
+    expect(find.byKey(first).hitTestable(), findsOneWidget);
   });
 }

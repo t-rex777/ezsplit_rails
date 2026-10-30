@@ -57,31 +57,38 @@ List<AnalyticsMonth> withoutCategories(
   ];
 }
 
-/// A month's categories for the pie: the big ones, plus what folded into Other.
+/// Categories that get their own chart colour; the rest show as "Other".
+const int chartSlots = 6;
+
+/// A month's categories for the pie: the ones with their own colour, plus
+/// what folded into Other.
 typedef PieSplit = ({List<CategorySpend> big, int otherPaise, int otherCount});
 
-PieSplit foldSmall(List<CategorySpend> categories) {
+/// Keeps a category when it is in [keep] (keys from [categoryKey]) and at least
+/// [otherThreshold] of the month. Everything else folds into Other.
+PieSplit foldSmall(
+  List<CategorySpend> categories, {
+  required Set<String> keep,
+}) {
   final total = categories.fold<int>(0, (sum, c) => sum + c.paise);
+  bool own(CategorySpend c) => keep.contains(categoryKey(c.name));
+  bool small(CategorySpend c) => total > 0 && c.paise / total < otherThreshold;
   final big = <CategorySpend>[];
-  var otherPaise = 0;
-  var otherCount = 0;
+  final rest = <CategorySpend>[];
   for (final c in categories) {
-    if (total > 0 && c.paise / total < otherThreshold) {
-      otherPaise += c.paise;
-      otherCount++;
-    } else {
-      big.add(c);
-    }
+    (own(c) && !small(c) ? big : rest).add(c);
   }
-  // A lone small category keeps its own name instead of becoming "Other".
-  if (otherCount == 1) {
-    final lone = categories.firstWhere(
-      (c) => total > 0 && c.paise / total < otherThreshold,
-    );
-    return (big: [...big, lone], otherPaise: 0, otherCount: 0);
+  // A lone leftover with its own colour keeps its name instead of "Other".
+  if (rest.length == 1 && own(rest.single)) {
+    big.add(rest.single);
+    rest.clear();
   }
   big.sort((a, b) => b.paise.compareTo(a.paise));
-  return (big: big, otherPaise: otherPaise, otherCount: otherCount);
+  return (
+    big: big,
+    otherPaise: rest.fold(0, (sum, c) => sum + c.paise),
+    otherCount: rest.length,
+  );
 }
 
 /// Whole-number percent change from the month before [index] to [index].

@@ -27,6 +27,10 @@ String formatRupees(int paise) {
   return '$sign₹$whole$decimals';
 }
 
+/// [formatRupees] rounded to whole rupees, for totals and chart summaries.
+String formatWholeRupees(int paise) =>
+    formatRupees((paise / 100).round() * 100);
+
 // String maths avoids double rounding; extra decimals are truncated.
 int _decimalToPaise(String s) {
   final negative = s.startsWith('-');
