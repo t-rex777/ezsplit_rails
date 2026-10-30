@@ -127,6 +127,51 @@ RSpec.describe "Mobile API", type: :request do
     end
   end
 
+  describe "personal expenses" do
+    let!(:friendship) { create(:friendship, user: me, friend: riya) }
+
+    def personal(name:, amount:, date: Date.new(2026, 10, 10), currency: "INR")
+      expense(name: name, amount: amount, payer: me, category: food, shares: { me => amount },
+              date: date, currency: currency, target_group: nil)
+    end
+
+    it "creates one without a group" do
+      post expenses_url, params: { expense: {
+        name: "Groceries", amount: "540", split_type: "equal", currency: "INR", expense_date: "2026-10-30",
+        payer_id: me.id, category_id: food.id, distribution: [ { user_id: me.id, amount: 1 } ]
+      } }
+
+      expect(response).to have_http_status(:ok)
+      created = Expense.last
+      expect(created.group_id).to be_nil
+      expect(created.expenses_users.pluck(:user_id, :amount)).to eq([ [ me.id, BigDecimal("540") ] ])
+    end
+
+    it "lists only expenses outside groups that only I am in" do
+      mine = personal(name: "Groceries", amount: 540)
+      expense(name: "Cab with Riya", amount: 200, payer: me, category: food, shares: { me => 100, riya => 100 }, target_group: nil)
+      expense(name: "Dinner", amount: 300, payer: me, category: food, shares: { me => 300 })
+
+      get expenses_url, params: { personal: "true" }
+
+      expect(response).to have_http_status(:ok)
+      expect(json["data"].map { |row| row["id"].to_i }).to eq([ mine.id ])
+    end
+
+    it "adds the month's personal total and count to the summary" do
+      personal(name: "Groceries", amount: 540)
+      personal(name: "Coffee", amount: 180)
+      personal(name: "Last month", amount: 999, date: Date.new(2026, 9, 30))
+      personal(name: "Abroad", amount: 5, currency: "USD")
+
+      get summary_url, params: { month: "2026-10" }
+
+      expect(json["personal_total"]).to eq("720.0")
+      expect(json["personal_count"]).to eq(2)
+      expect(json["my_share"]).to eq("720.0")
+    end
+  end
+
   describe "GET /groups/:id/totals" do
     before do
       expense(name: "Dinner", amount: 3000, payer: riya, category: riya_food, shares: { me => 1000, riya => 1000, arjun => 1000 })

@@ -43,24 +43,27 @@ final lastCategoryIdProvider = FutureProvider.autoDispose<int?>((ref) async {
   }
 });
 
-/// Reloads everything an expense change can alter in a group.
+/// Reloads everything an expense change can alter. A null [groupId] is a
+/// personal expense, which touches no group.
 void invalidateAfterExpenseChange(
   void Function(ProviderOrFamily) invalidate,
-  int groupId, {
+  int? groupId, {
   int? expenseId,
 }) {
   invalidate(groupExpensesProvider);
   invalidate(activityFeedProvider);
-  invalidate(groupBalancesProvider(groupId));
-  invalidate(groupTotalsProvider(groupId));
-  invalidate(groupProvider(groupId));
-  invalidate(groupsProvider);
+  if (groupId != null) {
+    invalidate(groupBalancesProvider(groupId));
+    invalidate(groupTotalsProvider(groupId));
+    invalidate(groupProvider(groupId));
+    invalidate(groupsProvider);
+  }
   invalidateMonthlySummaries(invalidate);
   if (expenseId != null) invalidate(expenseProvider(expenseId));
 }
 
-/// [expenseId] is null when adding.
-typedef ExpenseFormKey = ({int groupId, int? expenseId});
+/// [expenseId] is null when adding. [groupId] is null for a personal expense.
+typedef ExpenseFormKey = ({int? groupId, int? expenseId});
 
 class ExpenseFormState {
   const ExpenseFormState({
@@ -82,7 +85,7 @@ class ExpenseFormState {
     this.error,
   });
 
-  final int groupId;
+  final int? groupId;
   final int? expenseId;
   final int meId;
 
@@ -108,6 +111,9 @@ class ExpenseFormState {
   final String? error;
 
   bool get isEdit => expenseId != null;
+
+  /// Only me, no group, no split to set.
+  bool get isPersonal => groupId == null;
 
   int? get paise => parseRupees(amountText);
 
@@ -232,14 +238,18 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
   @override
   ExpenseFormState build() {
     final me = ref.read(sessionProvider).requireValue!;
-    final group = ref.read(groupProvider(key.groupId)).requireValue;
+    final groupId = key.groupId;
+    final group = groupId == null
+        ? null
+        : ref.read(groupProvider(groupId)).requireValue;
+    final members = group?.members ?? [me];
     final categories = ref.read(categoriesProvider).requireValue;
     final expenseId = key.expenseId;
     if (expenseId != null) {
       return _fromExpense(
         ref.read(expenseProvider(expenseId)).requireValue,
         me.id,
-        group,
+        members,
       );
     }
     final last = ref.read(lastCategoryIdProvider).value;
@@ -250,7 +260,7 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
     return ExpenseFormState(
       groupId: key.groupId,
       meId: me.id,
-      members: group.members,
+      members: members,
       name: '',
       amountText: '',
       categoryId: category,
@@ -258,17 +268,17 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       date: DateTime(today.year, today.month, today.day),
       notes: '',
       mode: SplitMode.equal,
-      included: [for (final u in group.members) u.id],
+      included: [for (final u in members) u.id],
       percents: const {},
       exact: const {},
     );
   }
 
-  ExpenseFormState _fromExpense(Expense e, int meId, Group group) {
+  ExpenseFormState _fromExpense(Expense e, int meId, List<User> people) {
     // A payer who has left the group still has to be choosable and visible.
     final everyone = [
-      ...group.members,
-      if (!group.members.any((u) => u.id == e.payer.id)) e.payer,
+      ...people,
+      if (!people.any((u) => u.id == e.payer.id)) e.payer,
     ];
     // The server hands leftover paise to the first people in distribution
     // order, so the stored share order is kept; everyone else follows.

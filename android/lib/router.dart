@@ -13,6 +13,7 @@ import 'screens/groups/group_settings_screen.dart';
 import 'screens/groups/groups_screen.dart';
 import 'screens/groups/new_group_screen.dart';
 import 'screens/home/dashboard_screen.dart';
+import 'screens/personal/personal_screen.dart';
 import 'screens/profile/categories_screen.dart';
 import 'screens/profile/edit_details_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -105,6 +106,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/home',
                 builder: (_, _) => const DashboardScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'personal',
+                    builder: (_, _) => const PersonalScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (_, _) =>
+                            const ExpenseFormScreen(groupId: null),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

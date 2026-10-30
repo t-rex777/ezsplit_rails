@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../data/models.dart';
@@ -12,6 +13,7 @@ import '../../widgets/brutal_button.dart';
 import '../../widgets/brutal_card.dart';
 import '../../widgets/category_icon.dart';
 import '../groups/group_widgets.dart';
+import '../personal/personal_screen.dart';
 
 const double _minBarFraction = 0.04;
 
@@ -360,6 +362,8 @@ class _Body extends StatelessWidget {
             Text(otherCurrencyLine(t), style: text.bodyMedium),
         ],
         const SizedBox(height: 20),
+        _PersonalCard(data: data, month: month),
+        const SizedBox(height: 20),
         Text(
           'By category',
           style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -371,6 +375,90 @@ class _Body extends StatelessWidget {
           )
         else
           _Categories(categories: data.categories),
+      ],
+    );
+  }
+}
+
+/// Spending outside any group, with a way into the list and the form.
+class _PersonalCard extends StatelessWidget {
+  const _PersonalCard({required this.data, required this.month});
+
+  final MonthlySummary data;
+  final String month;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final c = context.ez;
+    final n = data.personalCount;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Personal',
+                style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/home/personal'),
+              style: TextButton.styleFrom(
+                foregroundColor: c.ink,
+                minimumSize: const Size(kMinTap, kMinTap),
+              ),
+              child: const Text(
+                'See all',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        BrutalCard(
+          onTap: () => context.go('/home/personal'),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: c.lilac,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: c.line, width: kPillBorder),
+                ),
+                child: const Icon(Symbols.person, color: onAccent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${formatRupees(data.personalPaise)} spent alone',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$n ${n == 1 ? 'expense' : 'expenses'} in $month · no group',
+                      style: text.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              AddPersonalButton(
+                onTap: () => context.push('/home/personal/new'),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

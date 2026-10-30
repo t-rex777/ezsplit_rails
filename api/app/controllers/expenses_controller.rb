@@ -89,6 +89,7 @@ class ExpensesController < ApplicationController
   def filtered_expenses
     expenses = current_user.visible_expenses
     expenses = expenses.where(group_id: params[:group_id]) if params[:group_id].present?
+    expenses = expenses.personal_for(current_user) if params[:personal] == "true"
     expenses = expenses.where("LOWER(expenses.name) LIKE ?", "%#{Expense.sanitize_sql_like(params[:q].downcase)}%") if params[:q].present?
     expenses = expenses.where(category_id: params[:category_ids]) if params[:category_ids].present?
     expenses = expenses.where(payer_id: current_user.id) if params[:paid_by] == "me"

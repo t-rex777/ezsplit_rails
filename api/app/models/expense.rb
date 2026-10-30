@@ -13,6 +13,12 @@ class Expense < ApplicationRecord
   validates :split_type, inclusion: { in: SPLIT_TYPES, message: "must be equal, percentage or exact" }
   validates :currency, inclusion: { in: CURRENCIES, message: "must be INR or USD" }
 
+  # No group, paid by the user, and nobody else has a share.
+  scope :personal_for, ->(user) {
+    where(group_id: nil, payer_id: user.id)
+      .where.not(id: ExpensesUser.where.not(user_id: user.id).select(:expense_id))
+  }
+
   # A copy of the expense for the activity log. Names are copied in so the entry still reads after a delete.
   # Shares are read with a fresh query, so the copy is right even after the split was just rebuilt.
   def snapshot

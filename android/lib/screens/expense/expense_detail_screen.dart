@@ -40,10 +40,14 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
 
   Future<void> _delete(Expense e) async {
     final groupId = e.groupId;
+    final meId = ref.read(sessionProvider).value?.id;
+    final personal = meId != null && e.isPersonalFor(meId);
     final confirmed = await confirmSheet(
       context,
       title: 'Delete this expense?',
-      body: "It's removed for everyone in the split, and balances change.",
+      body: personal
+          ? "It's removed from your personal spending."
+          : "It's removed for everyone in the split, and balances change.",
       confirmLabel: 'Delete',
       destructive: true,
     );
@@ -66,10 +70,14 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
       });
       return;
     }
-    if (groupId != null) {
-      invalidateAfterExpenseChange(container.invalidate, groupId);
-    }
-    router.go(groupId == null ? '/groups' : '/groups/$groupId');
+    invalidateAfterExpenseChange(container.invalidate, groupId);
+    router.go(
+      groupId != null
+          ? '/groups/$groupId'
+          : personal
+          ? '/home/personal'
+          : '/groups',
+    );
   }
 
   @override
@@ -104,7 +112,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                       ),
                     ),
                     // The server only lets the creator change or remove it.
-                    if (mine && e.groupId != null)
+                    if (mine && (e.groupId != null || e.isPersonalFor(me.id)))
                       _BarButton(
                         icon: Symbols.edit,
                         label: 'Edit expense',
@@ -217,8 +225,10 @@ class _Body extends ConsumerWidget {
         if (s.userId != e.payer.id) s,
     ];
     final payerName = nameOf(e.payer.id);
+    final personal = meId != null && e.isPersonalFor(meId);
     final details = [
       if (group != null) group.name,
+      if (personal) 'Personal',
       e.category.name,
       DateFormat('d MMM y').format(e.date),
     ].join(' · ');
@@ -270,8 +280,11 @@ class _Body extends ConsumerWidget {
                 style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 2),
-              Text(_splitLabel(e, e.shares.length)),
-              if (payerShare != null) ...[
+              if (personal)
+                const Text('Only you. Nobody owes anything.')
+              else
+                Text(_splitLabel(e, e.shares.length)),
+              if (payerShare != null && !personal) ...[
                 const SizedBox(height: 2),
                 Text(
                   e.payer.id == meId

@@ -233,6 +233,13 @@ class Expense {
   /// From `current_user_amount`: positive when I am owed, negative when I owe.
   final int myAmountPaise;
 
+  /// Outside any group, paid by [meId], and nobody else has a share.
+  bool isPersonalFor(int meId) =>
+      groupId == null &&
+      payer.id == meId &&
+      shares.isNotEmpty &&
+      shares.every((s) => s.userId == meId);
+
   factory Expense.fromJson(
     Map<String, dynamic> resource,
     JsonApiIndex included,
@@ -368,11 +375,17 @@ class MonthlySummary {
     required this.owedToYouPaise,
     required this.categories,
     required this.otherCurrencies,
+    this.personalPaise = 0,
+    this.personalCount = 0,
   });
 
   /// "2026-10".
   final String month;
   final int mySharePaise;
+
+  /// Expenses outside any group that only I am in, this month.
+  final int personalPaise;
+  final int personalCount;
   final int youOwePaise;
   final int owedToYouPaise;
   final List<CategorySpend> categories;
@@ -383,6 +396,10 @@ class MonthlySummary {
     mySharePaise: paiseOf(json['my_share']),
     youOwePaise: paiseOf(json['you_owe']),
     owedToYouPaise: paiseOf(json['owed_to_you']),
+    personalPaise: json['personal_total'] == null
+        ? 0
+        : paiseOf(json['personal_total']),
+    personalCount: (json['personal_count'] as num?)?.toInt() ?? 0,
     categories: [
       for (final c in json['categories'] as List<dynamic>)
         CategorySpend.fromJson(c as Map<String, dynamic>),
@@ -466,6 +483,7 @@ enum PaidBy {
 class ExpenseQuery {
   const ExpenseQuery({
     this.groupId,
+    this.personal = false,
     this.q,
     this.categoryIds = const [],
     this.paidBy,
@@ -476,6 +494,9 @@ class ExpenseQuery {
   });
 
   final int? groupId;
+
+  /// Only expenses outside any group that only I am in.
+  final bool personal;
   final String? q;
   final List<int> categoryIds;
   final PaidBy? paidBy;
@@ -487,6 +508,7 @@ class ExpenseQuery {
   /// Only the filters that are set; the server defaults the rest.
   Map<String, dynamic> toQuery() => {
     if (groupId != null) 'group_id': groupId,
+    if (personal) 'personal': 'true',
     if (q != null && q!.isNotEmpty) 'q': q,
     if (categoryIds.isNotEmpty) 'category_ids[]': categoryIds,
     if (paidBy != null) 'paid_by': paidBy!.api,
