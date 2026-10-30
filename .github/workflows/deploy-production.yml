@@ -24,9 +24,11 @@ jobs:
         run: |
           set -euo pipefail
           cd /Users/manish/Documents/personal/ezsplit_rails
-          git fetch origin production
+          # The launchd runner has no interactive SSH agent. This repo is
+          # public, so fetch over HTTPS instead of the git@github.com remote.
+          git fetch "https://github.com/${GITHUB_REPOSITORY}.git" production
           git checkout production
-          git pull --ff-only origin production
+          git merge --ff-only FETCH_HEAD
           cd api
           docker compose up -d --build --remove-orphans
           docker image prune -f
