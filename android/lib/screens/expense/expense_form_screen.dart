@@ -63,6 +63,10 @@ String _dateLabel(DateTime d) {
   return DateFormat('d MMM y').format(d);
 }
 
+/// Where the form goes back to when there is no screen under it.
+String _backPath(int? groupId) =>
+    groupId == null ? '/home/personal' : '/groups/$groupId';
+
 /// Opens the edit form for an expense. The group comes from the expense.
 class EditExpenseScreen extends ConsumerWidget {
   const EditExpenseScreen({super.key, required this.expenseId});
@@ -72,9 +76,13 @@ class EditExpenseScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expense = ref.watch(expenseProvider(expenseId));
+    final meId = ref.watch(sessionProvider).value?.id;
     final e = expense.value;
     if (e != null && e.groupId != null) {
       return ExpenseFormScreen(groupId: e.groupId!, expenseId: expenseId);
+    }
+    if (e != null && meId != null && e.isPersonalFor(meId)) {
+      return ExpenseFormScreen(groupId: null, expenseId: expenseId);
     }
     if (e != null) {
       return const _FormShell(
@@ -105,16 +113,18 @@ class EditExpenseScreen extends ConsumerWidget {
 class ExpenseFormScreen extends ConsumerWidget {
   const ExpenseFormScreen({super.key, required this.groupId, this.expenseId});
 
-  final int groupId;
+  /// Null adds or edits a personal expense.
+  final int? groupId;
   final int? expenseId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final title = expenseId == null ? 'Add expense' : 'Edit expense';
     // The form reads these once when it starts, so all of them load first.
+    final groupId = this.groupId;
     final loads = <AsyncValue<Object?>>[
       ref.watch(sessionProvider),
-      ref.watch(groupProvider(groupId)),
+      if (groupId != null) ref.watch(groupProvider(groupId)),
       ref.watch(categoriesProvider),
       ref.watch(lastCategoryIdProvider),
       if (expenseId != null) ref.watch(expenseProvider(expenseId!)),
@@ -126,7 +136,7 @@ class ExpenseFormScreen extends ConsumerWidget {
         child: RetryMessage(
           message: errorMessage(failed.error!),
           onRetry: () {
-            ref.invalidate(groupProvider(groupId));
+            if (groupId != null) ref.invalidate(groupProvider(groupId));
             ref.invalidate(categoriesProvider);
             if (expenseId != null) ref.invalidate(expenseProvider(expenseId!));
           },
@@ -160,7 +170,7 @@ class _FormShell extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 8, 20, 0),
               child: Row(
                 children: [
-                  _CloseButton(onTap: () => _leave(context, null)),
+                  _CloseButton(onTap: () => _leave(context, '/groups')),
                   Expanded(child: _Title(title)),
                 ],
               ),
@@ -173,11 +183,11 @@ class _FormShell extends StatelessWidget {
   }
 }
 
-void _leave(BuildContext context, int? groupId) {
+void _leave(BuildContext context, String fallback) {
   if (context.canPop()) {
     context.pop();
   } else {
-    context.go(groupId == null ? '/groups' : '/groups/$groupId');
+    context.go(fallback);
   }
 }
 
@@ -258,7 +268,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
       _key.groupId,
       expenseId: _key.expenseId,
     );
-    if (mounted) _leave(context, _key.groupId);
+    if (mounted) _leave(context, _backPath(_key.groupId));
   }
 
   Future<void> _pickPayer(ExpenseFormState s) async {
@@ -352,7 +362,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                   _CloseButton(
                     onTap: s.posting
                         ? null
-                        : () => _leave(context, _key.groupId),
+                        : () => _leave(context, _backPath(_key.groupId)),
                   ),
                   const SizedBox(width: 2),
                   Expanded(
@@ -363,7 +373,10 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                 ],
               ),
               const SizedBox(height: 12),
-              _GroupLine(groupId: s.groupId, memberCount: s.members.length),
+              if (s.groupId case final groupId?)
+                _GroupLine(groupId: groupId, memberCount: s.members.length)
+              else
+                const _PersonalLine(),
               const SizedBox(height: 12),
               BrutalInput(
                 key: const ValueKey('description'),
@@ -412,62 +425,79 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Field(
-                      semanticLabel: 'Paid by',
-                      onTap: () => _pickPayer(s),
-                      child: Row(
-                        children: [
-                          const Text('Paid by'),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              payer == null ? '' : personLabel(payer, s.meId),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+              if (s.isPersonal)
+                _Field(
+                  semanticLabel: 'Date',
+                  onTap: () => _pickDate(s),
+                  child: Row(
+                    children: [
+                      const Icon(Symbols.calendar_today),
+                      const SizedBox(width: 8),
+                      Text(_dateLabel(s.date)),
+                    ],
+                  ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Field(
+                        semanticLabel: 'Paid by',
+                        onTap: () => _pickPayer(s),
+                        child: Row(
+                          children: [
+                            const Text('Paid by'),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                payer == null ? '' : personLabel(payer, s.meId),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                          const Spacer(),
-                          const Icon(Symbols.expand_more),
+                            const Spacer(),
+                            const Icon(Symbols.expand_more),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _Field(
+                      semanticLabel: 'Date',
+                      onTap: () => _pickDate(s),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Symbols.calendar_today),
+                          const SizedBox(width: 8),
+                          Text(_dateLabel(s.date)),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _Field(
-                    semanticLabel: 'Date',
-                    onTap: () => _pickDate(s),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Symbols.calendar_today),
-                        const SizedBox(width: 8),
-                        Text(_dateLabel(s.date)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final m in SplitMode.values)
-                    BrutalPill(
-                      label: m.label,
-                      selected: m == s.mode,
-                      onTap: () => _openSplit(m),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _SplitSummary(state: s, onTap: () => _openSplit(s.mode)),
+              if (s.isPersonal)
+                _PersonalSummary(paise: s.paise)
+              else ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final m in SplitMode.values)
+                      BrutalPill(
+                        label: m.label,
+                        selected: m == s.mode,
+                        onTap: () => _openSplit(m),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _SplitSummary(state: s, onTap: () => _openSplit(s.mode)),
+              ],
               if (s.error != null) ...[
                 const SizedBox(height: 12),
                 Semantics(
@@ -589,6 +619,77 @@ class _GroupLine extends ConsumerWidget {
         const SizedBox(width: 8),
         Text('all $memberCount members', style: text.bodySmall),
       ],
+    );
+  }
+}
+
+/// Stands in for the group pill on a personal expense.
+class _PersonalLine extends StatelessWidget {
+  const _PersonalLine();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        const Text('In'),
+        const SizedBox(width: 8),
+        BrutalSurface(
+          color: context.ez.lilac,
+          borderWidth: kPillBorder,
+          radius: 999,
+          shadowOffset: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Symbols.person, color: onAccent, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Personal',
+                style: text.labelLarge?.copyWith(
+                  color: onAccent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(child: Text('only you · not split', style: text.bodySmall)),
+      ],
+    );
+  }
+}
+
+/// Takes the split summary's place on a personal expense.
+class _PersonalSummary extends StatelessWidget {
+  const _PersonalSummary({required this.paise});
+
+  final int? paise;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final amount = paise;
+    return BrutalCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            amount == null
+                ? 'You pay for yourself'
+                : 'You paid ${formatRupees(amount)} for yourself',
+            style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Counts in your monthly spending. Nobody owes anything.',
+            style: text.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

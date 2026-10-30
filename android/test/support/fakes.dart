@@ -243,6 +243,7 @@ Expense makeExpense(
   List<Share> shares = const [],
   int? creatorId,
   String? notes,
+  int? groupId = 1,
 }) => Expense(
   id: id,
   name: name,
@@ -256,7 +257,7 @@ Expense makeExpense(
   creatorId: creatorId ?? payer.id,
   myAmountPaise: mine,
   notes: notes,
-  groupId: 1,
+  groupId: groupId,
 );
 
 BalanceRow balanceRow(User u, int paise) => BalanceRow(

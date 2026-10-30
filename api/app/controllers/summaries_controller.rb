@@ -3,6 +3,7 @@ class SummariesController < ApplicationController
 
   # GET /summary?month=YYYY-MM
   # My share of expenses dated in the month (INR), by category, plus my overall balances.
+  # personal_total and personal_count cover the month's expenses outside any group that only I am in.
   def show
     month = parse_month(params[:month])
     if month.nil?
@@ -15,10 +16,13 @@ class SummariesController < ApplicationController
       expenses: { currency: CURRENCY, expense_date: month.all_month }
     )
     balances = balance_totals
+    personal = Expense.personal_for(current_user).where(currency: CURRENCY, expense_date: month.all_month)
 
     render json: {
       month: month.strftime("%Y-%m"),
       my_share: shares.sum(:amount).to_d.to_s("F"),
+      personal_total: personal.sum(:amount).to_d.to_s("F"),
+      personal_count: personal.count,
       you_owe: balances.dig(CURRENCY, :you_owe).to_s("F"),
       owed_to_you: balances.dig(CURRENCY, :owed_to_you).to_s("F"),
       categories: SpendingByCategory.rows(shares.pluck("expenses.category_id", "expenses_users.amount"), current_user),

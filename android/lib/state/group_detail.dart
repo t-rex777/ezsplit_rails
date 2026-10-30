@@ -56,8 +56,10 @@ class ExpenseFilters {
     onlyUnsettled: onlyUnsettled ?? this.onlyUnsettled,
   );
 
-  ExpenseQuery toQuery(int groupId, {int? page}) => ExpenseQuery(
+  /// A null [groupId] asks for my personal expenses.
+  ExpenseQuery toQuery(int? groupId, {int? page}) => ExpenseQuery(
     groupId: groupId,
+    personal: groupId == null,
     q: q.trim(),
     categoryIds: categoryIds,
     paidBy: paidBy,
@@ -126,7 +128,8 @@ class ExpenseListState {
   );
 }
 
-typedef ExpenseListKey = (int groupId, ExpenseFilters filters);
+/// A null group id is the personal list.
+typedef ExpenseListKey = (int? groupId, ExpenseFilters filters);
 
 class ExpenseListNotifier extends AsyncNotifier<ExpenseListState> {
   ExpenseListNotifier(this.key);
