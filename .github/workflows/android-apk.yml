@@ -1,11 +1,9 @@
 name: Android APK
 
-# Every merge into dev builds a release APK and attaches it to a GitHub release.
+# Every push to production builds a release APK and attaches it to a GitHub release.
 on:
   push:
-    branches: [dev]
-    paths: ["android/**", ".github/workflows/android-apk.yml"]
-  workflow_dispatch:
+    branches: [production]
 
 permissions:
   contents: write
@@ -66,11 +64,11 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: dev-${{ github.run_number }}
+          TAG: production-${{ github.run_number }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk "ezsplit-$TAG.apk"
           gh release create "$TAG" "ezsplit-$TAG.apk" \
             --target "${{ github.sha }}" \
             --prerelease \
             --title "ezsplit $TAG" \
-            --notes "Built from dev at ${{ github.sha }}. Download the APK on your phone and open it to install."
+            --notes "Built from production at ${{ github.sha }}. Download the APK on your phone and open it to install."
