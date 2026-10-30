@@ -98,7 +98,7 @@ void main() {
       FakeAuthRepository(current: testUser),
       extraOverrides: _repos(),
     );
-    for (final tab in ['Groups', 'Activity', 'Profile', 'Home']) {
+    for (final tab in ['Groups', 'Activity', 'Analytics', 'Profile', 'Home']) {
       await tester.tap(find.widgetWithText(InkWell, tab));
       await tester.pumpAndSettle();
       expect(locationOf(c), '/${tab.toLowerCase()}');
@@ -121,7 +121,7 @@ void main() {
     routerOf(c).go('/groups');
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    for (final tab in ['Home', 'Groups', 'Activity', 'Profile']) {
+    for (final tab in ['Home', 'Groups', 'Activity', 'Analytics', 'Profile']) {
       final item = find.widgetWithText(InkWell, tab);
       expect(item, findsOneWidget);
       final size = tester.getSize(item);
@@ -169,6 +169,8 @@ void main() {
       '/expenses/3/edit',
       '/profile/details',
       '/profile/categories',
+      '/analytics',
+      '/analytics/category?month=2026-10&name=Food',
     ]) {
       routerOf(c).go(path);
       await tester.pumpAndSettle();

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:ezsplit_mobile/data/activities_repository.dart';
+import 'package:ezsplit_mobile/data/analytics_repository.dart';
 import 'package:ezsplit_mobile/data/api_error.dart';
 import 'package:ezsplit_mobile/data/balances_repository.dart';
 import 'package:ezsplit_mobile/data/categories_repository.dart';
@@ -194,6 +195,7 @@ List<Override> repoOverrides(
   FakeUsersRepository users, {
   FakeSummaryRepository? summary,
   FakeActivitiesRepository? activities,
+  FakeAnalyticsRepository? analytics,
 }) => [
   groupsRepositoryProvider.overrideWithValue(groups),
   usersRepositoryProvider.overrideWithValue(users),
@@ -202,6 +204,9 @@ List<Override> repoOverrides(
   ),
   summaryRepositoryProvider.overrideWithValue(
     summary ?? FakeSummaryRepository(),
+  ),
+  analyticsRepositoryProvider.overrideWithValue(
+    analytics ?? FakeAnalyticsRepository(),
   ),
 ];
 
@@ -616,3 +621,34 @@ ActivityEntry makePayment(
   ),
   changedFields: const [],
 );
+
+class FakeAnalyticsRepository extends AnalyticsRepository {
+  FakeAnalyticsRepository({Map<AnalyticsScope, List<AnalyticsMonth>>? byScope})
+    : byScope = byScope ?? {},
+      super(dummyClient());
+
+  /// Scopes not listed come back with no months.
+  final Map<AnalyticsScope, List<AnalyticsMonth>> byScope;
+  final List<AnalyticsScope> requested = [];
+  final List<({DateTime month, String category, AnalyticsScope scope})>
+  expenseRequests = [];
+  List<AnalyticsExpense> expenseRows = const [];
+  Object? error;
+
+  @override
+  Future<List<AnalyticsMonth>> months(AnalyticsScope scope) async {
+    requested.add(scope);
+    if (error != null) throw error!;
+    return byScope[scope] ?? const [];
+  }
+
+  @override
+  Future<List<AnalyticsExpense>> expenses({
+    required DateTime month,
+    required String category,
+    required AnalyticsScope scope,
+  }) async {
+    expenseRequests.add((month: month, category: category, scope: scope));
+    return expenseRows;
+  }
+}

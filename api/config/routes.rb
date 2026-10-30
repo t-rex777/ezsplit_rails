@@ -9,6 +9,9 @@ Rails.application.routes.draw do
   resources :activities, only: %i[ index ]
   resources :balances, only: %i[ index ]
   resource :summary, only: %i[ show ]
+  resource :analytics, only: %i[ show ], controller: "analytics" do
+    get :expenses
+  end
   resource :me, only: %i[ show update ], controller: "me"
   resources :invitations, only: %i[ index create update ] do
     post :accept, on: :member

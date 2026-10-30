@@ -4,9 +4,10 @@
 # viewer's own category (name, icon, color) when they have one with that name.
 class SpendingByCategory
   # pairs: [[category_id, amount], ...]. Returns rows sorted by amount, largest first.
-  def self.rows(pairs, viewer)
-    categories = Category.where(id: pairs.map(&:first).uniq).index_by(&:id)
-    own = viewer.categories.index_by { |category| category.name.to_s.downcase }
+  # Pass categories (id => Category) and own (lowercased name => Category) to reuse them across calls.
+  def self.rows(pairs, viewer, categories: nil, own: nil)
+    categories ||= Category.where(id: pairs.map(&:first).uniq).index_by(&:id)
+    own ||= own_by_name(viewer)
 
     totals = Hash.new { |hash, key| hash[key] = { category: nil, amount: BigDecimal("0") } }
     pairs.each do |category_id, amount|
@@ -21,5 +22,9 @@ class SpendingByCategory
       .map do |row|
         { name: row[:category].name, icon: row[:category].icon, color: row[:category].color, amount: row[:amount].to_s("F") }
       end
+  end
+
+  def self.own_by_name(viewer)
+    viewer.categories.index_by { |category| category.name.to_s.downcase }
   end
 end
