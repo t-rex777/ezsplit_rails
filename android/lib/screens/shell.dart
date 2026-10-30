@@ -79,6 +79,7 @@ const _tabs = [
   _Tab('Home', Symbols.home),
   _Tab('Groups', Symbols.group),
   _Tab('Activity', Symbols.history),
+  _Tab('Analytics', Symbols.bar_chart),
   _Tab('Profile', Symbols.person),
 ];
 

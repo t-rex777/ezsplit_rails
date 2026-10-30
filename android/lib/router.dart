@@ -6,6 +6,8 @@ import 'screens/auth/accept_invite_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/activity_screen.dart';
+import 'screens/analytics/analytics_screen.dart';
+import 'screens/analytics/category_screen.dart';
 import 'screens/expense/expense_detail_screen.dart';
 import 'screens/expense/expense_form_screen.dart';
 import 'screens/group_detail/group_detail_screen.dart';
@@ -171,6 +173,36 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/activity',
                 builder: (_, _) => const ActivityScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/analytics',
+                builder: (_, _) => const AnalyticsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'category',
+                    builder: (_, state) {
+                      final q = state.uri.queryParameters;
+                      final parts = (q['month'] ?? '').split('-');
+                      final y = parts.length == 2
+                          ? int.tryParse(parts[0])
+                          : null;
+                      final m = parts.length == 2
+                          ? int.tryParse(parts[1])
+                          : null;
+                      final now = DateTime.now();
+                      return AnalyticsCategoryScreen(
+                        month: y != null && m != null && m >= 1 && m <= 12
+                            ? DateTime(y, m)
+                            : DateTime(now.year, now.month),
+                        name: q['name'] ?? '',
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

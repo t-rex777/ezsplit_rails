@@ -769,3 +769,62 @@ class ActivityEntry {
     );
   }
 }
+
+/// My share for one month, split by category.
+class AnalyticsMonth {
+  const AnalyticsMonth({
+    required this.month,
+    required this.totalPaise,
+    required this.categories,
+    this.otherCurrencyCount = 0,
+  });
+
+  /// The first of the month.
+  final DateTime month;
+  final int totalPaise;
+  final List<CategorySpend> categories;
+
+  /// Expenses in other currencies, left out of the total.
+  final int otherCurrencyCount;
+
+  factory AnalyticsMonth.fromJson(Map<String, dynamic> json) {
+    final parts = (json['month'] as String).split('-');
+    return AnalyticsMonth(
+      month: DateTime(int.parse(parts[0]), int.parse(parts[1])),
+      totalPaise: paiseOf(json['total']),
+      otherCurrencyCount: (json['other_currency_count'] as num?)?.toInt() ?? 0,
+      categories: [
+        for (final c in json['categories'] as List<dynamic>)
+          CategorySpend.fromJson(c as Map<String, dynamic>),
+      ],
+    );
+  }
+}
+
+/// One of my expenses in an analytics category, with my share of it.
+class AnalyticsExpense {
+  const AnalyticsExpense({
+    required this.id,
+    required this.name,
+    required this.date,
+    required this.mySharePaise,
+    this.groupName,
+  });
+
+  final int id;
+  final String name;
+  final DateTime date;
+  final int mySharePaise;
+
+  /// Null for an expense outside any group.
+  final String? groupName;
+
+  factory AnalyticsExpense.fromJson(Map<String, dynamic> json) =>
+      AnalyticsExpense(
+        id: (json['id'] as num).toInt(),
+        name: json['name'] as String,
+        date: DateTime.parse(json['expense_date'] as String),
+        mySharePaise: paiseOf(json['my_share']),
+        groupName: json['group_name'] as String?,
+      );
+}
