@@ -87,7 +87,7 @@ Future<void> fillBasics(WidgetTester tester, {String amount = '3000'}) async {
 }
 
 ExpenseFormState formState(ProviderContainer c, [int? expenseId]) =>
-    c.read(expenseFormProvider((groupId: 1, expenseId: expenseId)));
+    c.read(expenseFormProvider(expenseFormKey(1, expenseId: expenseId)));
 
 bool enabled(WidgetTester tester, String label) =>
     tester
