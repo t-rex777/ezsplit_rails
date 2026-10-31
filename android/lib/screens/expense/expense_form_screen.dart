@@ -11,6 +11,7 @@ import '../../state/expense_form.dart';
 import '../../state/group_detail.dart';
 import '../../state/group_icons.dart';
 import '../../state/groups.dart';
+import '../../state/quick_actions.dart';
 import '../../state/session.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/avatar.dart';
@@ -110,16 +111,85 @@ class EditExpenseScreen extends ConsumerWidget {
   }
 }
 
+/// Adds an expense from a saved quick action, or with [edit] creates or
+/// changes the quick action itself. A null [quickActionId] makes a new one.
+class QuickActionFormScreen extends ConsumerWidget {
+  const QuickActionFormScreen({
+    super.key,
+    required this.quickActionId,
+    required this.edit,
+  });
+
+  final String? quickActionId;
+  final bool edit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final title = !edit
+        ? 'Add expense'
+        : quickActionId == null
+        ? 'New quick action'
+        : 'Edit quick action';
+    final id = quickActionId;
+    if (id == null) {
+      return ExpenseFormScreen(groupId: null, editsQuickAction: true);
+    }
+    final actions = ref.watch(quickActionsProvider);
+    if (!actions.hasValue) {
+      return _FormShell(
+        title: title,
+        fallback: '/home',
+        child: Center(child: CircularProgressIndicator(color: context.ez.ink)),
+      );
+    }
+    final action = actions.requireValue.where((a) => a.id == id).firstOrNull;
+    if (action == null) {
+      return const _FormShell(
+        title: 'Quick action',
+        fallback: '/home',
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'This quick action was deleted.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+    return ExpenseFormScreen(
+      groupId: action.groupId,
+      quickActionId: id,
+      editsQuickAction: edit,
+    );
+  }
+}
+
 class ExpenseFormScreen extends ConsumerWidget {
-  const ExpenseFormScreen({super.key, required this.groupId, this.expenseId});
+  const ExpenseFormScreen({
+    super.key,
+    required this.groupId,
+    this.expenseId,
+    this.quickActionId,
+    this.editsQuickAction = false,
+  });
 
   /// Null adds or edits a personal expense.
   final int? groupId;
   final int? expenseId;
 
+  /// See [ExpenseFormKey].
+  final String? quickActionId;
+  final bool editsQuickAction;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final title = expenseId == null ? 'Add expense' : 'Edit expense';
+    final title = editsQuickAction
+        ? (quickActionId == null ? 'New quick action' : 'Edit quick action')
+        : expenseId == null
+        ? 'Add expense'
+        : 'Edit expense';
     // The form reads these once when it starts, so all of them load first.
     final groupId = this.groupId;
     final loads = <AsyncValue<Object?>>[
@@ -128,11 +198,16 @@ class ExpenseFormScreen extends ConsumerWidget {
       ref.watch(categoriesProvider),
       ref.watch(lastCategoryIdProvider),
       if (expenseId != null) ref.watch(expenseProvider(expenseId!)),
+      if (quickActionId != null) ref.watch(quickActionsProvider),
     ];
     final failed = loads.where((l) => l.hasError && !l.hasValue).firstOrNull;
+    final fallback = quickActionId != null || editsQuickAction
+        ? '/home'
+        : '/groups';
     if (failed != null) {
       return _FormShell(
         title: title,
+        fallback: fallback,
         child: RetryMessage(
           message: errorMessage(failed.error!),
           onRetry: () {
@@ -146,19 +221,34 @@ class ExpenseFormScreen extends ConsumerWidget {
     if (loads.any((l) => !l.hasValue)) {
       return _FormShell(
         title: title,
+        fallback: fallback,
         child: Center(child: CircularProgressIndicator(color: context.ez.ink)),
       );
     }
-    return _FormBody(formKey: (groupId: groupId, expenseId: expenseId));
+    return _FormBody(
+      formKey: (
+        groupId: groupId,
+        expenseId: expenseId,
+        quickActionId: quickActionId,
+        editsQuickAction: editsQuickAction,
+      ),
+    );
   }
 }
 
 /// The header and close button around a form that is not ready yet.
 class _FormShell extends StatelessWidget {
-  const _FormShell({required this.title, required this.child});
+  const _FormShell({
+    required this.title,
+    required this.child,
+    this.fallback = '/groups',
+  });
 
   final String title;
   final Widget child;
+
+  /// Where Close goes when there is no screen under this one.
+  final String fallback;
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +260,7 @@ class _FormShell extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 8, 20, 0),
               child: Row(
                 children: [
-                  _CloseButton(onTap: () => _leave(context, '/groups')),
+                  _CloseButton(onTap: () => _leave(context, fallback)),
                   Expanded(child: _Title(title)),
                 ],
               ),
@@ -258,7 +348,15 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     super.dispose();
   }
 
+  bool get _quick => _key.quickActionId != null || _key.editsQuickAction;
+
+  String get _fallback => _quick ? '/home' : _backPath(_key.groupId);
+
   Future<void> _save() async {
+    if (_key.editsQuickAction) {
+      if (await _form.saveQuickAction() && mounted) _leave(context, _fallback);
+      return;
+    }
     // The container outlives this screen, so the reload still happens.
     final container = ProviderScope.containerOf(context);
     final saved = await _form.save();
@@ -268,7 +366,55 @@ class _FormBodyState extends ConsumerState<_FormBody> {
       _key.groupId,
       expenseId: _key.expenseId,
     );
-    if (mounted) _leave(context, _backPath(_key.groupId));
+    if (mounted) _leave(context, _fallback);
+  }
+
+  Future<void> _pickGroup(ExpenseFormState s) async {
+    final List<Group> groups;
+    try {
+      groups = await ref.read(groupsProvider.future);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(errorMessage(e))));
+      }
+      return;
+    }
+    if (!mounted) return;
+    // A sheet result of null means dismissed, so personal is -1.
+    const personal = -1;
+    final id = await showBrutalSheet<int>(
+      context,
+      title: 'Group',
+      child: Column(
+        children: [
+          _ChoiceRow(
+            leading: IconTile(
+              icon: 'person',
+              color: context.ez.lilac,
+              size: 36,
+            ),
+            label: 'Personal',
+            selected: s.groupId == null,
+            onTap: (ctx) => Navigator.of(ctx).pop(personal),
+          ),
+          for (final g in groups)
+            _ChoiceRow(
+              leading: _GroupIconTile(groupId: g.id),
+              label: g.name,
+              selected: g.id == s.groupId,
+              onTap: (ctx) => Navigator.of(ctx).pop(g.id),
+            ),
+        ],
+      ),
+    );
+    if (id == null || id == (s.groupId ?? personal)) return;
+    final me = s.member(s.meId) ?? ref.read(sessionProvider).value!;
+    if (id == personal) {
+      _form.setGroup(null, [me]);
+    } else {
+      _form.setGroup(id, groups.firstWhere((g) => g.id == id).members);
+    }
   }
 
   Future<void> _pickPayer(ExpenseFormState s) async {
@@ -350,6 +496,17 @@ class _FormBodyState extends ConsumerState<_FormBody> {
         ?.where((x) => x.id == s.categoryId)
         .firstOrNull;
     final payer = s.member(s.payerId);
+    final editsQuick = _key.editsQuickAction;
+    final fromQuick = _key.quickActionId != null && !editsQuick;
+    // Loads the list early so the group picker opens without a wait.
+    if (editsQuick) ref.watch(groupsProvider);
+    final title = editsQuick
+        ? (_key.quickActionId == null
+              ? 'New quick action'
+              : 'Edit quick action')
+        : s.isEdit
+        ? 'Edit expense'
+        : 'Add expense';
     return PopScope(
       canPop: !s.posting,
       child: Scaffold(
@@ -360,20 +517,29 @@ class _FormBodyState extends ConsumerState<_FormBody> {
               Row(
                 children: [
                   _CloseButton(
-                    onTap: s.posting
-                        ? null
-                        : () => _leave(context, _backPath(_key.groupId)),
+                    onTap: s.posting ? null : () => _leave(context, _fallback),
                   ),
                   const SizedBox(width: 2),
-                  Expanded(
-                    child: _Title(s.isEdit ? 'Edit expense' : 'Add expense'),
-                  ),
+                  Expanded(child: _Title(title)),
                   const SizedBox(width: 8),
-                  _SaveButton(enabled: s.canSave, onTap: _save),
+                  _SaveButton(
+                    label: fromQuick ? 'Add' : 'Save',
+                    enabled: s.canSave,
+                    onTap: _save,
+                  ),
                 ],
               ),
+              if (fromQuick) ...[
+                const SizedBox(height: 12),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: _FromQuickActionChip(),
+                ),
+              ],
               const SizedBox(height: 12),
-              if (s.groupId case final groupId?)
+              if (editsQuick)
+                _GroupPickerField(state: s, onTap: () => _pickGroup(s))
+              else if (s.groupId case final groupId?)
                 _GroupLine(groupId: groupId, memberCount: s.members.length)
               else
                 const _PersonalLine(),
@@ -424,8 +590,10 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              if (s.isPersonal)
+              // A quick action has no date: it is always added for the day it
+              // is used.
+              if (!(s.isPersonal && editsQuick)) const SizedBox(height: 12),
+              if (s.isPersonal && !editsQuick)
                 _Field(
                   semanticLabel: 'Date',
                   onTap: () => _pickDate(s),
@@ -437,7 +605,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                     ],
                   ),
                 )
-              else
+              else if (!s.isPersonal)
                 Row(
                   children: [
                     Expanded(
@@ -464,19 +632,21 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    _Field(
-                      semanticLabel: 'Date',
-                      onTap: () => _pickDate(s),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Symbols.calendar_today),
-                          const SizedBox(width: 8),
-                          Text(_dateLabel(s.date)),
-                        ],
+                    if (!editsQuick) ...[
+                      const SizedBox(width: 10),
+                      _Field(
+                        semanticLabel: 'Date',
+                        onTap: () => _pickDate(s),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Symbols.calendar_today),
+                            const SizedBox(width: 8),
+                            Text(_dateLabel(s.date)),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               const SizedBox(height: 12),
@@ -511,29 +681,47 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
-              BrutalInput(
-                key: const ValueKey('note'),
-                hint: 'Add a note',
-                controller: _notes,
-                prefix: const Icon(Symbols.sticky_note_2),
-                onChanged: _form.setNotes,
-              ),
-              const SizedBox(height: 12),
-              _Field(
-                semanticLabel: 'Add photo',
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Photos are coming soon')),
-                ),
-                color: c.bg,
-                child: const Row(
+              if (editsQuick) ...[
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Symbols.photo_camera),
-                    SizedBox(width: 8),
-                    Text('Add photo'),
+                    const Icon(Symbols.smartphone, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Saved on this phone only. When you use it, you can '
+                        'still change any field before adding.',
+                        style: text.bodySmall,
+                      ),
+                    ),
                   ],
                 ),
-              ),
+              ] else ...[
+                const SizedBox(height: 12),
+                BrutalInput(
+                  key: const ValueKey('note'),
+                  hint: 'Add a note',
+                  controller: _notes,
+                  prefix: const Icon(Symbols.sticky_note_2),
+                  onChanged: _form.setNotes,
+                ),
+                const SizedBox(height: 12),
+                _Field(
+                  semanticLabel: 'Add photo',
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Photos are coming soon')),
+                  ),
+                  color: c.bg,
+                  child: const Row(
+                    children: [
+                      Icon(Symbols.photo_camera),
+                      SizedBox(width: 8),
+                      Text('Add photo'),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -542,9 +730,110 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   }
 }
 
-class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.enabled, required this.onTap});
+/// Marks a form that a quick action filled in.
+class _FromQuickActionChip extends StatelessWidget {
+  const _FromQuickActionChip();
 
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ez;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.ink,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: c.line, width: kPillBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Symbols.bolt, size: 16, color: c.bg),
+          const SizedBox(width: 6),
+          Text(
+            'From quick action',
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(color: c.bg, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The group a quick action belongs to, tappable to move it.
+class _GroupPickerField extends ConsumerWidget {
+  const _GroupPickerField({required this.state, required this.onTap});
+
+  final ExpenseFormState state;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupId = state.groupId;
+    final name = groupId == null
+        ? 'Personal'
+        : ref.watch(groupProvider(groupId)).value?.name ?? '';
+    final n = state.members.length;
+    return _Field(
+      semanticLabel: 'Group $name',
+      onTap: onTap,
+      child: Row(
+        children: [
+          if (groupId == null)
+            const Icon(Symbols.person)
+          else
+            CategoryIcon(
+              ref.watch(groupIconProvider(groupId)).value ?? defaultGroupIcon,
+              context.ez.ink,
+              size: 22,
+            ),
+          const SizedBox(width: 8),
+          const Text('Group'),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            groupId == null
+                ? 'only you'
+                : '$n ${n == 1 ? 'member' : 'members'}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const Spacer(),
+          const Icon(Symbols.expand_more),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupIconTile extends ConsumerWidget {
+  const _GroupIconTile({required this.groupId});
+
+  final int groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => IconTile(
+    icon: ref.watch(groupIconProvider(groupId)).value ?? defaultGroupIcon,
+    color: context.ez.amber,
+    size: 36,
+  );
+}
+
+class _SaveButton extends StatelessWidget {
+  const _SaveButton({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
   final bool enabled;
   final VoidCallback onTap;
 
@@ -557,14 +846,14 @@ class _SaveButton extends StatelessWidget {
       shadowOffset: 3,
       showShadow: enabled,
       isButton: true,
-      semanticLabel: 'Save',
+      semanticLabel: label,
       onTap: enabled ? onTap : null,
       constraints: const BoxConstraints(minWidth: kMinTap, minHeight: kMinTap),
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Center(
         widthFactor: 1,
         child: Text(
-          'Save',
+          label,
           style: Theme.of(context).textTheme.labelLarge
               ?.copyWith(color: onAccent, fontWeight: FontWeight.w700),
         ),
