@@ -109,6 +109,33 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/home',
                 builder: (_, _) => const DashboardScreen(),
                 routes: [
+                  // `quick/new` must come before `quick/:id`.
+                  GoRoute(
+                    path: 'quick/new',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (_, _) => const QuickActionFormScreen(
+                      quickActionId: null,
+                      edit: true,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'quick/:id',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (_, state) => QuickActionFormScreen(
+                      quickActionId: state.pathParameters['id'],
+                      edit: false,
+                    ),
+                    routes: [
+                      GoRoute(
+                        path: 'edit',
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (_, state) => QuickActionFormScreen(
+                          quickActionId: state.pathParameters['id'],
+                          edit: true,
+                        ),
+                      ),
+                    ],
+                  ),
                   GoRoute(
                     path: 'personal',
                     builder: (_, _) => const PersonalScreen(),

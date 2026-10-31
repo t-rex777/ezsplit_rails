@@ -10,6 +10,7 @@ import '../screens/groups/group_widgets.dart' show errorMessage;
 import 'activity.dart';
 import 'group_detail.dart';
 import 'groups.dart';
+import 'quick_actions.dart';
 import 'session.dart';
 import 'summary.dart';
 
@@ -63,7 +64,23 @@ void invalidateAfterExpenseChange(
 }
 
 /// [expenseId] is null when adding. [groupId] is null for a personal expense.
-typedef ExpenseFormKey = ({int? groupId, int? expenseId});
+/// [quickActionId] fills the form from a saved quick action. With
+/// [editsQuickAction] the form edits the quick action itself (a null id makes
+/// a new one) instead of adding an expense.
+typedef ExpenseFormKey = ({
+  int? groupId,
+  int? expenseId,
+  String? quickActionId,
+  bool editsQuickAction,
+});
+
+/// A form key for adding or editing an expense, not a quick action.
+ExpenseFormKey expenseFormKey(int? groupId, {int? expenseId}) => (
+  groupId: groupId,
+  expenseId: expenseId,
+  quickActionId: null,
+  editsQuickAction: false,
+);
 
 class ExpenseFormState {
   const ExpenseFormState({
@@ -256,6 +273,24 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
     final category = categories.any((c) => c.id == last)
         ? last
         : categories.firstOrNull?.id;
+    final quickId = key.quickActionId;
+    final quick = quickId == null
+        ? null
+        : ref
+              .read(quickActionsProvider)
+              .requireValue
+              .where((a) => a.id == quickId)
+              .firstOrNull;
+    if (quick != null) {
+      return _fromQuickAction(
+        quick,
+        me.id,
+        members,
+        categories.any((c) => c.id == quick.categoryId)
+            ? quick.categoryId
+            : category,
+      );
+    }
     final today = DateTime.now();
     return ExpenseFormState(
       groupId: key.groupId,
@@ -272,6 +307,103 @@ class ExpenseFormNotifier extends Notifier<ExpenseFormState> {
       percents: const {},
       exact: const {},
     );
+  }
+
+  /// People who left the group since the quick action was saved drop out of
+  /// the split. A percent or exact split then no longer adds up, so the form
+  /// asks the user to finish it instead of guessing.
+  ExpenseFormState _fromQuickAction(
+    QuickAction q,
+    int meId,
+    List<User> members,
+    int? categoryId,
+  ) {
+    var included = [
+      for (final u in members)
+        if (q.included.contains(u.id)) u.id,
+    ];
+    var mode = SplitMode.of(q.splitType);
+    if (included.isEmpty) {
+      included = [for (final u in members) u.id];
+      mode = SplitMode.equal;
+    }
+    final today = DateTime.now();
+    return ExpenseFormState(
+      groupId: key.groupId,
+      meId: meId,
+      members: members,
+      name: q.name,
+      amountText: paiseToApi(q.paise).replaceFirst(RegExp(r'\.00$'), ''),
+      categoryId: categoryId,
+      payerId: members.any((u) => u.id == q.payerId) ? q.payerId : meId,
+      date: DateTime(today.year, today.month, today.day),
+      notes: '',
+      mode: mode,
+      included: included,
+      percents: mode == SplitMode.percent
+          ? {for (final id in included) id: q.percents[id] ?? 0}
+          : const {},
+      exact: mode == SplitMode.exact
+          ? {for (final id in included) id: q.exact[id] ?? 0}
+          : const {},
+    );
+  }
+
+  /// Moves a quick action to another group, or to personal with a null
+  /// [groupId]. The old split means nothing there, so it starts over.
+  void setGroup(int? groupId, List<User> members) {
+    final s = state;
+    state = ExpenseFormState(
+      groupId: groupId,
+      meId: s.meId,
+      members: members,
+      name: s.name,
+      amountText: s.amountText,
+      categoryId: s.categoryId,
+      payerId: s.meId,
+      date: s.date,
+      notes: s.notes,
+      mode: SplitMode.equal,
+      included: [for (final u in members) u.id],
+      percents: const {},
+      exact: const {},
+    );
+  }
+
+  /// Stores the form as a quick action on this device. Returns false when the
+  /// form is not complete.
+  Future<bool> saveQuickAction() async {
+    final s = state;
+    if (!s.canSave) return false;
+    final groupId = s.groupId;
+    final category = ref
+        .read(categoriesProvider)
+        .value
+        ?.where((c) => c.id == s.categoryId)
+        .firstOrNull;
+    await ref
+        .read(quickActionsProvider.notifier)
+        .save(
+          QuickAction(
+            id:
+                key.quickActionId ??
+                DateTime.now().microsecondsSinceEpoch.toString(),
+            name: s.name.trim(),
+            paise: s.paise!,
+            groupId: groupId,
+            groupName: groupId == null
+                ? 'Personal'
+                : ref.read(groupProvider(groupId)).value?.name ?? '',
+            categoryId: s.categoryId!,
+            categoryIcon: category?.icon ?? '',
+            payerId: s.payerId,
+            splitType: s.mode.type,
+            included: s.included,
+            percents: s.mode == SplitMode.percent ? s.percents : const {},
+            exact: s.mode == SplitMode.exact ? s.exact : const {},
+          ),
+        );
+    return true;
   }
 
   ExpenseFormState _fromExpense(Expense e, int meId, List<User> people) {

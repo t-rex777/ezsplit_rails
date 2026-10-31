@@ -14,6 +14,7 @@ import '../../widgets/brutal_card.dart';
 import '../../widgets/category_icon.dart';
 import '../groups/group_widgets.dart';
 import '../personal/personal_screen.dart';
+import 'quick_actions_section.dart';
 
 const double _minBarFraction = 0.04;
 
@@ -361,6 +362,8 @@ class _Body extends StatelessWidget {
           for (final t in others)
             Text(otherCurrencyLine(t), style: text.bodyMedium),
         ],
+        const SizedBox(height: 20),
+        const QuickActionsSection(),
         const SizedBox(height: 20),
         _PersonalCard(data: data, month: month),
         const SizedBox(height: 20),
